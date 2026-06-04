@@ -1,0 +1,84 @@
+{
+  "../vue-app/node_modules/canvg/lib/index.es.js": {
+    "file": "assets/index.es-Cji00YAJ.js",
+    "name": "index.es",
+    "src": "../vue-app/node_modules/canvg/lib/index.es.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "../vue-app/node_modules/dompurify/dist/purify.es.mjs": {
+    "file": "assets/purify.es-V6uLfjnH.js",
+    "name": "purify.es",
+    "src": "../vue-app/node_modules/dompurify/dist/purify.es.mjs",
+    "isDynamicEntry": true
+  },
+  "../vue-app/node_modules/html2canvas/dist/html2canvas.esm.js": {
+    "file": "assets/html2canvas.esm-CBrSDip1.js",
+    "name": "html2canvas.esm",
+    "src": "../vue-app/node_modules/html2canvas/dist/html2canvas.esm.js",
+    "isDynamicEntry": true
+  },
+  "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.eot": {
+    "file": "assets/remixicon-DUK49BtM.eot",
+    "src": "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.eot"
+  },
+  "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.svg": {
+    "file": "assets/remixicon-ncU_JTfY.svg",
+    "src": "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.svg"
+  },
+  "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.ttf": {
+    "file": "assets/remixicon-D9ZyeRwQ.ttf",
+    "src": "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.ttf"
+  },
+  "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.woff": {
+    "file": "assets/remixicon-DfzPQSMi.woff",
+    "src": "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.woff"
+  },
+  "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.woff2": {
+    "file": "assets/remixicon-BVOYbT3K.woff2",
+    "src": "../vue-app/src/assets/icon-fonts/RemixIcons/fonts/remixicon.woff2"
+  },
+  "../vue-app/src/assets/icon-fonts/bootstrap-icons/icons/font/fonts/bootstrap-icons.woff": {
+    "file": "assets/bootstrap-icons-BOrJxbIo.woff",
+    "src": "../vue-app/src/assets/icon-fonts/bootstrap-icons/icons/font/fonts/bootstrap-icons.woff"
+  },
+  "../vue-app/src/assets/icon-fonts/bootstrap-icons/icons/font/fonts/bootstrap-icons.woff2": {
+    "file": "assets/bootstrap-icons-BtvjY1KL.woff2",
+    "src": "../vue-app/src/assets/icon-fonts/bootstrap-icons/icons/font/fonts/bootstrap-icons.woff2"
+  },
+  "../vue-app/src/assets/images/media-85.png": {
+    "file": "assets/media-85-DdLgRTE_.png",
+    "src": "../vue-app/src/assets/images/media-85.png"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-7KX6Luhk.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CUlv5iBx.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "../vue-app/node_modules/html2canvas/dist/html2canvas.esm.js",
+      "../vue-app/node_modules/dompurify/dist/purify.es.mjs",
+      "../vue-app/node_modules/canvg/lib/index.es.js"
+    ],
+    "css": [
+      "assets/app-BgaJKm9Z.css"
+    ],
+    "assets": [
+      "assets/media-85-DdLgRTE_.png",
+      "assets/remixicon-DUK49BtM.eot",
+      "assets/remixicon-BVOYbT3K.woff2",
+      "assets/remixicon-DfzPQSMi.woff",
+      "assets/remixicon-D9ZyeRwQ.ttf",
+      "assets/remixicon-ncU_JTfY.svg",
+      "assets/bootstrap-icons-BtvjY1KL.woff2",
+      "assets/bootstrap-icons-BOrJxbIo.woff"
+    ]
+  }
+}

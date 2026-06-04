@@ -1,0 +1,16 @@
+.tabular-nums,
+.money,
+.currency,
+.finance-table {
+  font-variant-numeric: tabular-nums;
+}
+
+.money,
+.currency {
+  white-space: nowrap;
+}
+
+.money.negative,
+.currency.negative {
+  color: #dc2626;
+}

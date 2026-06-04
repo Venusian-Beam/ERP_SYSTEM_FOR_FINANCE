@@ -1,0 +1,207 @@
+/* ============================================================
+   FINANCE ERP — GLOBAL ENTRY STYLES
+   Import order matters: theme → finance → component overrides
+   ============================================================ */
+
+@import './theme.css';
+@import './finance.css';
+
+/* ─── Base Reset ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', 'Poppins', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-default);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ─── Scrollbar Styling ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* ─── Selection Color ─────────────────────────────────────── */
+::selection {
+  background: rgba(124, 58, 237, 0.15);
+  color: var(--primary);
+}
+
+/* ─── Focus Ring (Accessibility) ──────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Transition for Theme Switching ─────────────────────── */
+body,
+.box,
+.sidebar,
+.header,
+.ti-form-control {
+  transition: background-color var(--transition-base),
+              border-color var(--transition-base),
+              color var(--transition-base);
+}
+
+/* ─── Typography Scale ────────────────────────────────────── */
+h1 { font-size: 1.875rem; font-weight: 700; color: var(--text-heading); }
+h2 { font-size: 1.5rem;   font-weight: 700; color: var(--text-heading); }
+h3 { font-size: 1.25rem;  font-weight: 600; color: var(--text-heading); }
+h4 { font-size: 1.125rem; font-weight: 600; color: var(--text-heading); }
+h5 { font-size: 1rem;     font-weight: 600; color: var(--text-heading); }
+h6 { font-size: 0.875rem; font-weight: 600; color: var(--text-heading); }
+
+p  { color: var(--text-default); line-height: 1.6; }
+
+/* ─── Link Defaults ───────────────────────────────────────── */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover { color: var(--primarytint1color); }
+
+/* ─── Table Defaults ──────────────────────────────────────── */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* ─── Utility Overrides ───────────────────────────────────── */
+.text-primary       { color: var(--primary) !important; }
+.text-success       { color: var(--finance-income) !important; }
+.text-danger        { color: var(--finance-expense) !important; }
+.text-warning       { color: var(--finance-pending) !important; }
+.bg-primary         { background-color: var(--primary) !important; }
+.border-primary     { border-color: var(--primary) !important; }
+
+/* ─── Page Content Wrapper ────────────────────────────────── */
+.page-content {
+  padding: 1.5rem;
+  min-height: calc(100vh - 60px);
+}
+
+/* ─── Box / Card Component ────────────────────────────────── */
+.box {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 1.5rem;
+}
+
+.box-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.box-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.box-body {
+  padding: 1.25rem;
+}
+
+/* ─── Avatar ──────────────────────────────────────────────── */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.avatar-sm  { width: 2rem;   height: 2rem;   font-size: 0.75rem; }
+.avatar-md  { width: 2.5rem; height: 2.5rem; font-size: 0.875rem; }
+.avatar-lg  { width: 3rem;   height: 3rem;   font-size: 1rem; }
+.avatar-rounded { border-radius: 50%; }
+
+/* ─── Badges ──────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ─── Progress Bar ────────────────────────────────────────── */
+.progress {
+  height: 0.5rem;
+  background: var(--border-default);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────── */
+.ti-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  gap: 0.35rem;
+}
+
+.ti-btn-sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.ti-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

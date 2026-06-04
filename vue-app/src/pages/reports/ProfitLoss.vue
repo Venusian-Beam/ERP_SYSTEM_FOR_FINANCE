@@ -1,0 +1,6 @@
+<script setup>
+import FinancialReportWorkspace from '@/components/finance/FinancialReportWorkspace.vue'
+const metrics=[{label:'Total Revenue',value:'GHC 2,840,600',note:'+18.4% vs prior year'},{label:'Operating Expenses',value:'GHC 1,924,300',note:'67.7% of revenue'},{label:'Net Income',value:'GHC 916,300',note:'+24.1% vs prior year'}]
+const sections=[{title:'Revenue',rows:[{label:'Product Revenue',value:'GHC 1,642,800'},{label:'Professional Services',value:'GHC 742,600'},{label:'Support & Maintenance',value:'GHC 455,200'}],total:'GHC 2,840,600'},{title:'Operating Expenses',rows:[{label:'Cost of Sales',value:'GHC 684,400'},{label:'Salaries & Benefits',value:'GHC 728,900'},{label:'Sales & Marketing',value:'GHC 286,500'},{label:'General & Administrative',value:'GHC 224,500'}],total:'GHC 1,924,300'},{title:'Net Income',rows:[],totalLabel:'Net Income',total:'GHC 916,300'}]
+</script>
+<template><FinancialReportWorkspace title="Profit and Loss" subtitle="Analyze revenue, expenses, and profitability" :metrics="metrics" :sections="sections" :insight="{title:'Margin expansion detected',text:'Net margin improved to 32.3%, primarily driven by stronger professional services revenue.'}" /></template>

@@ -1,0 +1,38 @@
+# ── Node ──────────────────────────
+node_modules/
+dist/
+.cache/
+
+# ── PHP / Laravel ─────────────────
+vendor/
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/storage/logs/*.log
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/bootstrap/cache/*.php
+*.phar
+composer.phar
+
+# ── Vue / Vite ────────────────────
+vue-app/node_modules/
+vue-app/dist/
+vue-app/*.timestamp-*.mjs
+vue-app/project-tracker@1.0.0
+vue-app/vite
+
+# ── Environment ───────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Editor / OS ───────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Test cache ────────────────────
+.phpunit.result.cache

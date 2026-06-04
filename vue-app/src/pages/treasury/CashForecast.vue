@@ -1,0 +1,6 @@
+<script setup>
+import FinancialReportWorkspace from '@/components/finance/FinancialReportWorkspace.vue'
+const metrics=[{label:'Current Cash',value:'GHC 1,842,600',note:'Available today'},{label:'30-Day Forecast',value:'GHC 1,976,400',note:'+7.3% expected'},{label:'90-Day Forecast',value:'GHC 2,284,900',note:'+24.0% expected'}]
+const sections=[{title:'Expected Inflows',rows:[{label:'Customer Receipts · 30 Days',value:'GHC 418,600'},{label:'Customer Receipts · 60 Days',value:'GHC 526,400'},{label:'Other Operating Inflows',value:'GHC 84,000'}],total:'GHC 1,029,000'},{title:'Expected Outflows',rows:[{label:'Vendor Payments',value:'-GHC 286,300'},{label:'Payroll and Benefits',value:'-GHC 214,000'},{label:'Taxes and Other Obligations',value:'-GHC 86,400'}],total:'-GHC 586,700'},{title:'Forecast Cash Position',rows:[],totalLabel:'Projected Cash at 90 Days',total:'GHC 2,284,900'}]
+</script>
+<template><FinancialReportWorkspace title="Cash Forecast" subtitle="Predict liquidity across 30, 60, and 90-day horizons" period="Forecast generated June 3, 2026 · Base scenario" :metrics="metrics" :sections="sections" :insight="{title:'No cash shortfall is predicted',text:'The lowest projected balance is GHC 1.71M on June 18, comfortably above the GHC 750,000 liquidity threshold.'}" /></template>

@@ -1,0 +1,6 @@
+<script setup>
+import FinancialReportWorkspace from '@/components/finance/FinancialReportWorkspace.vue'
+const metrics=[{label:'Total Assets',value:'GHC 3,420,000',note:'+6.8% YTD'},{label:'Total Liabilities',value:'GHC 1,180,000',note:'34.5% of assets'},{label:'Total Equity',value:'GHC 2,240,000',note:'+9.2% YTD'}]
+const sections=[{title:'Assets',rows:[{label:'Cash and Cash Equivalents',value:'GHC 1,842,600'},{label:'Accounts Receivable',value:'GHC 342,780'},{label:'Prepaid Expenses',value:'GHC 126,400'},{label:'Property and Equipment',value:'GHC 1,108,220'}],total:'GHC 3,420,000'},{title:'Liabilities',rows:[{label:'Accounts Payable',value:'GHC 128,450'},{label:'Accrued Expenses',value:'GHC 214,600'},{label:'Long-term Debt',value:'GHC 836,950'}],total:'GHC 1,180,000'},{title:'Equity',rows:[{label:'Share Capital',value:'GHC 800,000'},{label:'Retained Earnings',value:'GHC 1,440,000'}],total:'GHC 2,240,000'}]
+</script>
+<template><FinancialReportWorkspace title="Balance Sheet" subtitle="Review assets, liabilities, and equity in real time" period="As of June 3, 2026" :metrics="metrics" :sections="sections" :insight="{title:'Strong working capital position',text:'Current assets exceed current liabilities by GHC 1.97M, supporting healthy short-term liquidity.'}" /></template>
