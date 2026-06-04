@@ -67,9 +67,11 @@ Route::post('webhooks/conversational', \App\Http\Controllers\ConversationalGatew
 
 // Internal API routes
 Route::prefix('api')->group(function () {
+    $finance = \App\Http\Controllers\Api\FinanceDataController::class;
+
     Route::post('ask-ai', [\App\Http\Controllers\ApiController::class, 'askAI']);
-    Route::get('dashboard', [\App\Http\Controllers\ApiDashboardController::class, 'index']);
-    Route::get('accounting/chart-of-accounts', [\App\Http\Controllers\ApiChartOfAccountsController::class, 'index']);
+    Route::get('dashboard', [$finance, 'dashboard']);
+    Route::get('accounting/chart-of-accounts', [$finance, 'chartOfAccounts']);
 });
 
 require __DIR__.'/auth.php';
