@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
+use App\Models\CompanySetting;
 use App\Models\Customer;
 use App\Models\CustomerInvoice;
 use App\Models\FinancialAccount;
@@ -619,9 +620,20 @@ final class FinanceDataController extends Controller
         return array_filter(compact('label', 'value', 'trend', 'icon', 'tone'), fn ($value): bool => $value !== null);
     }
 
+    private function currency(): string
+    {
+        static $currency = null;
+        if ($currency === null) {
+            $currency = CompanySetting::query()
+                ->where('tenant_id', TenantContext::requireId())
+                ->value('currency') ?? 'GHC';
+        }
+        return $currency;
+    }
+
     private function money(float|int|string|null $amount): string
     {
-        return 'GHC '.number_format((float) ($amount ?? 0), 2);
+        return $this->currency().' '.number_format((float) ($amount ?? 0), 2);
     }
 
     private function date(mixed $value): ?string

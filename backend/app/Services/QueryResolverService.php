@@ -333,9 +333,16 @@ final class QueryResolverService
         return false;
     }
 
+    private function currency(): string
+    {
+        return CompanySetting::query()
+            ->where('tenant_id', \App\Support\TenantContext::requireId())
+            ->value('currency') ?? 'GHC';
+    }
+
     private function money(float $amount): string
     {
-        return 'GHC ' . number_format($amount, 2);
+        return $this->currency() . ' ' . number_format($amount, 2);
     }
 
     /**

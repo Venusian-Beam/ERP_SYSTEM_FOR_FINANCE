@@ -14,7 +14,7 @@ final class ChatMessage extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['tenant_id', 'project_id', 'user_id', 'message', 'message_type', 'attachment_url', 'read_at'];
+    protected $fillable = ['tenant_id', 'project_id', 'user_id', 'message', 'message_type', 'attachment_url', 'read_at', 'created_at'];
 
     protected $casts = [
         'read_at' => 'datetime',

@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->string('message_type')->default('text');
             $table->string('attachment_url')->nullable();
             $table->timestamp('read_at')->nullable();
-            $table->timestamp('created_at');
+            $table->timestamp('created_at')->useCurrent();
             $table->index(['tenant_id', 'project_id', 'created_at']);
         });
     }
