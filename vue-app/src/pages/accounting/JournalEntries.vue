@@ -223,24 +223,12 @@ const saveEntry = async (status = 'draft') => {
   showNewModal.value = false
 }
 
-const deleteEntry = async (entry) => {
-  if (confirm(`Delete journal entry ${entry.entryNo}? This cannot be undone.`)) {
-    try {
-      await accountingService.deleteJournalEntry(entry.id)
-      entries.value = entries.value.filter(e => e.id !== entry.id)
-    } catch (e) {
-      console.error('Failed to delete journal entry:', e)
-      alert('Failed to delete. Check your connection.')
-    }
-  }
-}
-
 const postEntry = async (entry) => {
   if (entry.status === 'pending' || entry.status === 'draft') {
     try {
       await accountingService.updateJournalEntry(entry.id, { status: 'posted' })
       entry.status = 'posted'
-  } catch (e) {
+    } catch (e) {
       console.error('Failed to post journal entry:', e)
       const msg = e?.response?.data?.message || e?.message || 'Failed to post. Check your connection.'
       alert(msg)
@@ -258,7 +246,6 @@ const deleteEntry = async (entry) => {
       const msg = e?.response?.data?.message || e?.message || 'Failed to delete. Check your connection.'
       alert(msg)
     }
-  }
   }
 }
 
