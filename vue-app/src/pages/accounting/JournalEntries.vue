@@ -13,7 +13,7 @@ const router = useRouter()
 const loading      = ref(true)
 const searchQuery  = ref('')
 const filterStatus = ref('all')
-const dateRange    = ref({ from: null, to: null })
+const dateRange    = ref({ start: null, end: null })
 const showNewModal = ref(false)
 const editingEntryId = ref(null)
 const selectedEntry = ref(null)
@@ -202,8 +202,8 @@ const saveEntry = async (status = 'draft') => {
         entries.value[idx] = { ...entries.value[idx], ...payload, totalDebit: formTotalDebit.value, totalCredit: formTotalCredit.value }
       }
     } else {
-      const { data } = await accountingService.createJournalEntry(payload)
-      const created = data.record || data
+      const res = await accountingService.createJournalEntry(payload)
+      const created = res.record || res
       entries.value.unshift({
         id: created.id,
         entryNo: `JE-${String(created.id).padStart(4, '0')}`,
@@ -214,7 +214,9 @@ const saveEntry = async (status = 'draft') => {
     }
   } catch (e) {
     console.error('Failed to save journal entry:', e)
-    alert('Failed to save. Check your connection.')
+    const msg = e?.response?.data?.message || e?.message || 'Failed to save. Check your connection.'
+    const detail = e?.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(', ') : ''
+    alert(msg + (detail ? '\n\n' + detail : ''))
   }
 
   editingEntryId.value = null
@@ -238,10 +240,25 @@ const postEntry = async (entry) => {
     try {
       await accountingService.updateJournalEntry(entry.id, { status: 'posted' })
       entry.status = 'posted'
-    } catch (e) {
+  } catch (e) {
       console.error('Failed to post journal entry:', e)
-      alert('Failed to post. Check your connection.')
+      const msg = e?.response?.data?.message || e?.message || 'Failed to post. Check your connection.'
+      alert(msg)
     }
+  }
+}
+
+const deleteEntry = async (entry) => {
+  if (confirm(`Delete journal entry ${entry.entryNo}? This cannot be undone.`)) {
+    try {
+      await accountingService.deleteJournalEntry(entry.id)
+      entries.value = entries.value.filter(e => e.id !== entry.id)
+    } catch (e) {
+      console.error('Failed to delete journal entry:', e)
+      const msg = e?.response?.data?.message || e?.message || 'Failed to delete. Check your connection.'
+      alert(msg)
+    }
+  }
   }
 }
 

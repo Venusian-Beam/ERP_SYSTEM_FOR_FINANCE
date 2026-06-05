@@ -581,9 +581,9 @@ final class FinanceDataController extends Controller
             $entry = JournalEntry::query()->create([
                 'tenant_id' => TenantContext::requireId(),
                 'description' => $validated['description'],
-                'reference' => $validated['reference'] ?? null,
+                'reference' => $validated['reference'] ?? 'REF-'.now()->timestamp,
                 'status' => $validated['status'] ?? 'draft',
-                'posted_at' => $validated['date'],
+                'posted_at' => $validated['date'].' 00:00:00',
                 'created_by' => $request->user()?->id,
             ]);
 
