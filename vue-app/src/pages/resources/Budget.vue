@@ -1,24 +1,29 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { resourcesService } from '@/services/resourcesService'
 
-const budgetData = ref({
-  totalBudget: 500000,
-  spent: 325000,
-  remaining: 175000,
-  projected: 480000
+const budgetData = ref({ totalBudget: 0, spent: 0, remaining: 0, projected: 0 })
+const budgetItems = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await resourcesService.budget()
+    const d = data.record || data
+    budgetData.value = {
+      totalBudget: d.total_budget || d.totalBudget || 0,
+      spent: d.spent || 0,
+      remaining: d.remaining || 0,
+      projected: d.projected || 0
+    }
+    budgetItems.value = d.items || d.categories || []
+  } catch (e) {
+    console.error('Failed to load budget:', e)
+  }
 })
 
-const budgetItems = ref([
-  { id: 1, category: 'Development', allocated: 200000, spent: 150000, status: 'on-track' },
-  { id: 2, category: 'Design', allocated: 80000, spent: 65000, status: 'on-track' },
-  { id: 3, category: 'Infrastructure', allocated: 100000, spent: 45000, status: 'under' },
-  { id: 4, category: 'Marketing', allocated: 50000, spent: 35000, status: 'on-track' },
-  { id: 5, category: 'Testing', allocated: 70000, spent: 30000, status: 'under' }
-])
-
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'GHS', maximumFractionDigits: 0 }).format(amount)
 }
 </script>
 
@@ -26,10 +31,10 @@ const formatCurrency = (amount) => {
   <div>
     <PageHeader title="Budget Management" subtitle="Track and manage project budgets">
       <template #actions>
-        <button class="ti-btn ti-btn-light">
+        <button class="ti-btn ti-btn-light" @click="console.log('Export Report not implemented')">
           <i class="ri-download-line me-1"></i> Export Report
         </button>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Add Expense modal not implemented')">
           <i class="ri-add-line me-1"></i> Add Expense
         </button>
       </template>
@@ -105,7 +110,7 @@ const formatCurrency = (amount) => {
             <h5 class="box-title">Budget Breakdown by Category</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Category</th>

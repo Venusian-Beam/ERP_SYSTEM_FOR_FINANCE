@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProjectTask;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class ProjectTaskController extends Controller
@@ -30,7 +33,7 @@ class ProjectTaskController extends Controller
             'progress'   => 'nullable|integer|min:0|max:100',
         ]);
 
-        $validated['tenant_id'] = 1;
+        $validated['tenant_id'] = TenantContext::requireId();
         $validated['status']   = $validated['status'] ?? 'pending';
         $validated['priority'] = $validated['priority'] ?? 'medium';
         $validated['progress'] = $validated['progress'] ?? 0;

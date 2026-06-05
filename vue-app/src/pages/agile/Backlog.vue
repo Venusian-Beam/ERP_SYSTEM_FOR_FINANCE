@@ -1,15 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { agileService } from '@/services/agileService'
 
-const backlogItems = ref([
-  { id: 1, title: 'User authentication system', type: 'epic', priority: 'high', points: 21, status: 'in-progress' },
-  { id: 2, title: 'Dashboard redesign', type: 'feature', priority: 'medium', points: 13, status: 'ready' },
-  { id: 3, title: 'API rate limiting', type: 'story', priority: 'high', points: 5, status: 'ready' },
-  { id: 4, title: 'Mobile responsive layout', type: 'story', priority: 'medium', points: 8, status: 'backlog' },
-  { id: 5, title: 'Performance optimization', type: 'epic', priority: 'low', points: 34, status: 'backlog' },
-  { id: 6, title: 'Email notifications', type: 'feature', priority: 'medium', points: 13, status: 'ready' }
-])
+const backlogItems = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await agileService.backlog()
+    backlogItems.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load backlog:', e)
+  }
+})
 
 const getTypeClass = (type) => ({
   'epic': 'bg-purple-500/10 text-purple-500',
@@ -28,7 +31,7 @@ const getPriorityClass = (priority) => ({
   <div>
     <PageHeader title="Product Backlog" subtitle="Prioritize and manage backlog items">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Add Item modal not implemented')">
           <i class="ri-add-line me-1"></i> Add Item
         </button>
       </template>
@@ -94,7 +97,7 @@ const getPriorityClass = (priority) => ({
             </div>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th class="w-8"></th>

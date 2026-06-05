@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 final class SettingsController extends Controller
@@ -43,7 +44,10 @@ final class SettingsController extends Controller
 
     public function users(Request $request): Response
     {
+        $tenantId = Auth::user()?->tenant_id;
+
         $users = User::query()
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
             ->with('roles:id,name,slug')
             ->orderBy('name')
             ->paginate(30)

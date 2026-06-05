@@ -123,7 +123,7 @@ final class ReceivablesController extends Controller
     public function receipts(Request $request): Response
     {
         $query = Payment::query()
-            ->with(['customerInvoice.customer:id,name'])
+            ->with(['invoice.customer:id,name'])
             ->latest('paid_at');
 
         if ($request->filled('from')) {

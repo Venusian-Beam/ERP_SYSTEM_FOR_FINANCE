@@ -1,7 +1,41 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import FinanceDetailWorkspace from '@/components/finance/FinanceDetailWorkspace.vue'
-const details=[{label:'Vendor',value:'Global Logistics'},{label:'Bill Date',value:'June 1, 2026'},{label:'Due Date',value:'June 15, 2026'},{label:'Payment Terms',value:'Net 14'}]
-const lines=[{description:'Regional freight services',note:'May distribution cycle',account:'Freight & Delivery · 6320',qty:'1',rate:'GHC 10,800.00',amount:'GHC 10,800.00'},{description:'Fuel surcharge',note:'Contract rate adjustment',account:'Freight & Delivery · 6320',qty:'1',rate:'GHC 1,650.00',amount:'GHC 1,650.00'}]
-const timeline=[{title:'Bill captured by OCR',text:'Fields extracted with 97% confidence',time:'Jun 1 · 09:18',icon:'ri-scan-2-line'},{title:'Coding reviewed',text:'Ama Boateng confirmed expense accounts',time:'Jun 1 · 10:42'},{title:'Awaiting CFO approval',text:'Approval threshold exceeded',time:'Jun 2 · 08:15',icon:'ri-shield-user-line'}]
+import { payablesService } from '@/services/payablesService'
+
+const route = useRoute()
+const details = ref([])
+const lines = ref([])
+const timeline = ref([])
+const title = ref('')
+const subtitle = ref('')
+const status = ref('')
+const amount = ref('')
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await payablesService.bill(route.params.id)
+    const bill = data.record || data
+    title.value = bill.number || bill.reference
+    subtitle.value = `${bill.vendor} · Vendor bill`
+    status.value = bill.status
+    amount.value = `GHC ${Number(bill.amount).toLocaleString()}`
+    details.value = [
+      { label: 'Vendor', value: bill.vendor },
+      { label: 'Bill Date', value: bill.date },
+      { label: 'Due Date', value: bill.due },
+      { label: 'Payment Terms', value: bill.terms || 'Net 30' },
+    ]
+  } catch (e) {
+    console.error('Failed to load bill:', e)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
-<template><FinanceDetailWorkspace title="BILL-1048" subtitle="Global Logistics · Vendor bill" status="Pending approval" amount-label="Balance Due" amount="GHC 12,450.00" :details="details" :lines="lines" :timeline="timeline" primary-action="Approve & Pay" /></template>
+<template>
+  <div v-if="loading" class="flex justify-center items-center h-64"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+  <FinanceDetailWorkspace v-else :title="title" :subtitle="subtitle" :status="status" amount-label="Balance Due" :amount="amount" :details="details" :lines="lines" :timeline="timeline" primary-action="Approve & Pay" @primary-action="console.log('Approve & Pay not implemented')" @download-pdf="console.log('Download PDF not implemented')" />
+</template>

@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -25,7 +28,7 @@ class ProjectController extends Controller
             'progress'      => 'nullable|integer|min:0|max:100',
         ]);
 
-        $validated['tenant_id'] = 1;
+        $validated['tenant_id'] = TenantContext::requireId();
         $validated['status'] = $validated['status'] ?? 'planning';
         $validated['progress'] = $validated['progress'] ?? 0;
 

@@ -1,14 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { initiationService } from '@/services/initiationService'
 
-const stakeholders = ref([
-  { id: 1, name: 'John Smith', role: 'Project Sponsor', department: 'Executive', influence: 'high', interest: 'high' },
-  { id: 2, name: 'Sarah Johnson', role: 'Product Owner', department: 'Product', influence: 'high', interest: 'high' },
-  { id: 3, name: 'Mike Williams', role: 'Technical Lead', department: 'Engineering', influence: 'medium', interest: 'high' },
-  { id: 4, name: 'Emily Davis', role: 'QA Manager', department: 'Quality', influence: 'medium', interest: 'medium' },
-  { id: 5, name: 'David Brown', role: 'End User Rep', department: 'Operations', influence: 'low', interest: 'high' }
-])
+const stakeholders = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await initiationService.stakeholders()
+    stakeholders.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load stakeholders:', e)
+  }
+})
 
 const getInfluenceClass = (level) => ({
   'high': 'bg-danger/10 text-danger',
@@ -41,21 +45,16 @@ const closeAddModal = () => {
   }
 }
 
-const saveStakeholder = () => {
+const saveStakeholder = async () => {
   if (!newStakeholder.value.name.trim() || !newStakeholder.value.role.trim()) return
-
-  const nextId = stakeholders.value.length ? Math.max(...stakeholders.value.map(s => s.id)) + 1 : 1
-
-  stakeholders.value.push({
-    id: nextId,
-    name: newStakeholder.value.name.trim(),
-    role: newStakeholder.value.role.trim(),
-    department: newStakeholder.value.department.trim() || 'N/A',
-    influence: newStakeholder.value.influence,
-    interest: newStakeholder.value.interest
-  })
-
-  closeAddModal()
+  try {
+    await initiationService.createStakeholder(newStakeholder.value)
+    const data = await initiationService.stakeholders()
+    stakeholders.value = data.records || data
+    closeAddModal()
+  } catch (e) {
+    console.error('Failed to save stakeholder:', e)
+  }
 }
 </script>
 
@@ -76,7 +75,7 @@ const saveStakeholder = () => {
             <h5 class="box-title">Stakeholder Directory</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Name</th>

@@ -1,23 +1,42 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { lessonsService } from '@/services/lessonsService'
 
-const lessons = ref([
-  { id: 1, title: 'Early stakeholder involvement improves outcomes', category: 'process', project: 'Website Redesign', impact: 'positive', date: '2024-11-30' },
-  { id: 2, title: 'Underestimated API integration complexity', category: 'technical', project: 'CRM Integration', impact: 'negative', date: '2024-11-25' },
-  { id: 3, title: 'Daily standups improved team communication', category: 'team', project: 'Mobile App', impact: 'positive', date: '2024-11-20' },
-  { id: 4, title: 'Scope changes without impact analysis caused delays', category: 'scope', project: 'Data Migration', impact: 'negative', date: '2024-11-15' },
-  { id: 5, title: 'Automated testing reduced bug count by 60%', category: 'quality', project: 'Website Redesign', impact: 'positive', date: '2024-11-10' }
-])
-
+const lessons = ref([])
 const newLesson = ref({ title: '', category: '', description: '' })
+const saving = ref(false)
+
+onMounted(async () => {
+  try {
+    const data = await lessonsService.lessons()
+    lessons.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load lessons:', e)
+  }
+})
+
+async function saveLesson() {
+  if (!newLesson.value.title.trim() || !newLesson.value.category) return
+  saving.value = true
+  try {
+    await lessonsService.createLesson(newLesson.value)
+    newLesson.value = { title: '', category: '', description: '' }
+    const data = await lessonsService.lessons()
+    lessons.value = data.records || data
+  } catch (e) {
+    console.error('Failed to save lesson:', e)
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
   <div>
     <PageHeader title="Lessons Learned" subtitle="Capture and share project insights">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="newLesson = { title: '', category: '', description: '' }">
           <i class="ri-add-line me-1"></i> Add Lesson
         </button>
       </template>
@@ -74,7 +93,10 @@ const newLesson = ref({ title: '', category: '', description: '' })
               <label class="ti-form-label">Description</label>
               <textarea v-model="newLesson.description" class="ti-form-control" rows="3" placeholder="Describe the lesson in detail..."></textarea>
             </div>
-            <button class="ti-btn ti-btn-primary w-full">Save Lesson</button>
+            <button class="ti-btn ti-btn-primary w-full" :disabled="saving" @click="saveLesson">
+              <i v-if="saving" class="ri-loader-4-line animate-spin me-1"></i>
+              Save Lesson
+            </button>
           </div>
         </div>
 

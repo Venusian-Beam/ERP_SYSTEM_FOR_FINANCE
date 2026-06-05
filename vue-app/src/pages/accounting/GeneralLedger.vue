@@ -1,70 +1,35 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 import { exportToCSV } from '@/utils/exportUtils'
+import { accountingService } from '@/services/accountingService'
 
 // State
 const dateRange = ref({ from: '2024-11-01', to: '2024-11-30' })
 const selectedAccount = ref('all')
 const loading = ref(false)
+const accounts = ref([])
+const ledgerData = ref([])
 
-// Mock Data
-const accounts = [
-  { code: '1010', name: 'Business Checking', type: 'Asset' },
-  { code: '1100', name: 'Accounts Receivable', type: 'Asset' },
-  { code: '2000', name: 'Accounts Payable', type: 'Liability' },
-  { code: '4100', name: 'Service Revenue', type: 'Revenue' },
-  { code: '5200', name: 'Rent Expense', type: 'Expense' },
-  { code: '5300', name: 'Software & SaaS', type: 'Expense' }
-]
+onMounted(async () => {
+  await fetchLedger()
+})
 
-// Mock GL Data organized by account
-const ledgerData = ref([
-  {
-    accountCode: '1010',
-    accountName: 'Business Checking',
-    beginningBalance: 125000.00,
-    transactions: [
-      { id: 1, date: '2024-11-05', ref: 'DEP-001', desc: 'Client Payment - Acme Corp', debit: 15000, credit: 0 },
-      { id: 2, date: '2024-11-11', ref: 'RENT-NOV', desc: 'Office Rent - November', debit: 0, credit: 8500 },
-      { id: 3, date: '2024-11-14', ref: 'INV-2045', desc: 'Q4 Software License Purchase', debit: 0, credit: 2400 }
-    ],
-    netChange: 4100.00,
-    endingBalance: 129100.00
-  },
-  {
-    accountCode: '4100',
-    accountName: 'Service Revenue',
-    beginningBalance: -450000.00, // Credits are negative naturally in some GLs, but let's just use absolute and DR/CR notation. Let's use standard notation.
-    transactions: [
-      { id: 4, date: '2024-11-05', ref: 'DEP-001', desc: 'Client Payment - Acme Corp', debit: 0, credit: 15000 }
-    ],
-    netChange: -15000.00,
-    endingBalance: -465000.00
-  },
-  {
-    accountCode: '5200',
-    accountName: 'Rent Expense',
-    beginningBalance: 85000.00,
-    transactions: [
-      { id: 5, date: '2024-11-11', ref: 'RENT-NOV', desc: 'Office Rent - November', debit: 8500, credit: 0 }
-    ],
-    netChange: 8500.00,
-    endingBalance: 93500.00
-  },
-  {
-    accountCode: '5300',
-    accountName: 'Software & SaaS',
-    beginningBalance: 12400.00,
-    transactions: [
-      { id: 6, date: '2024-11-14', ref: 'INV-2045', desc: 'Q4 Software License Purchase', debit: 2400, credit: 0 }
-    ],
-    netChange: 2400.00,
-    endingBalance: 14800.00
+async function fetchLedger() {
+  loading.value = true
+  try {
+    const params = { from: dateRange.value.from, to: dateRange.value.to }
+    if (selectedAccount.value !== 'all') params.account = selectedAccount.value
+    const data = await accountingService.request('general-ledger', params)
+    ledgerData.value = data.records || []
+  } catch (e) {
+    console.error('Failed to load general ledger:', e)
+  } finally {
+    loading.value = false
   }
-])
+}
 
 const filteredLedger = computed(() => {
   if (selectedAccount.value === 'all') return ledgerData.value
@@ -164,10 +129,11 @@ const printReport = () => {
             </select>
           </div>
 
-          <!-- Apply btn placeholder (could just auto-apply) -->
           <div class="filter-item filter-apply">
-            <button class="ti-btn btn-primary-soft">
-              <i class="ri-filter-3-line"></i> Filter
+            <button class="ti-btn btn-primary-soft" @click="fetchLedger" :disabled="loading">
+              <i class="ri-filter-3-line" v-if="!loading"></i>
+              <i class="ri-loader-4-line spin" v-else></i>
+              Filter
             </button>
           </div>
         </div>
@@ -196,7 +162,7 @@ const printReport = () => {
           </div>
 
           <div class="table-responsive">
-            <table class="gl-table">
+            <table class="table-standard">
               <thead>
                 <tr>
                   <th style="width:120px">Date</th>
@@ -392,29 +358,6 @@ const printReport = () => {
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--text-heading);
-}
-
-.gl-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.gl-table th {
-  padding: 0.75rem 1.25rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  border-bottom: 2px solid var(--border-strong);
-  background: var(--bg-app);
-}
-
-.gl-table td {
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--border-default);
-  vertical-align: middle;
 }
 
 .trx-row:hover td { background: rgba(99,102,241,0.02); }

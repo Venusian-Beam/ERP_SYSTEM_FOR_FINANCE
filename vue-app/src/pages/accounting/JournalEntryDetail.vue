@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/finance/StatusBadge.vue'
 import { formatCurrency, formatDate } from '@/utils/formatters'
+import { accountingService } from '@/services/accountingService'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,36 +12,15 @@ const router = useRouter()
 const loading = ref(true)
 const entry = ref(null)
 
-// Mock fetch based on ID
-onMounted(() => {
-  // Simulate API call
-  setTimeout(() => {
-    entry.value = {
-      id: route.params.id || 1,
-      entryNo: `JE-${String(route.params.id || 1).padStart(4, '0')}`,
-      date: '2024-11-14',
-      description: 'Q4 Software License Purchase',
-      reference: 'INV-2045',
-      status: 'posted',
-      createdBy: 'Patrick M.',
-      createdAt: '2024-11-14T09:30:00Z',
-      postedBy: 'Sarah J.',
-      postedAt: '2024-11-14T11:45:00Z',
-      totalDebit: 2400.00,
-      totalCredit: 2400.00,
-      notes: 'Annual renewal for Adobe Creative Cloud and Microsoft 365 licenses for the design and engineering teams.',
-      lines: [
-        { accountCode: '5300', accountName: 'Software & SaaS', description: 'Design Team Licenses', debit: 1200, credit: 0 },
-        { accountCode: '5300', accountName: 'Software & SaaS', description: 'Engineering Team Licenses', debit: 1200, credit: 0 },
-        { accountCode: '1010', accountName: 'Business Checking', description: 'Payment via corporate card', debit: 0, credit: 2400 }
-      ],
-      attachments: [
-        { id: 1, name: 'adobe_invoice_nov24.pdf', size: '1.2 MB' },
-        { id: 2, name: 'ms_receipt.png', size: '450 KB' }
-      ]
-    }
+onMounted(async () => {
+  try {
+    const data = await accountingService.journalEntry(route.params.id)
+    entry.value = data.record || data
+  } catch (e) {
+    console.error('Failed to load journal entry:', e)
+  } finally {
     loading.value = false
-  }, 600)
+  }
 })
 
 const goBack = () => {
@@ -110,7 +90,7 @@ const voidEntry = () => {
           </div>
           <div class="box-body p-0">
             <div class="table-responsive">
-              <table class="je-table">
+              <table class="table-standard">
                 <thead>
                   <tr>
                     <th>Account</th>
@@ -363,32 +343,6 @@ const voidEntry = () => {
 }
 
 /* ─── Lines Table ─────────────────────────────────────────── */
-.je-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.je-table thead tr {
-  background: var(--bg-app);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.je-table th {
-  padding: 0.875rem 1rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
-.je-table td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-default);
-  vertical-align: middle;
-}
-
 .line-debit { border-left: 3px solid var(--finance-income); }
 .line-credit { border-left: 3px solid var(--finance-expense); }
 

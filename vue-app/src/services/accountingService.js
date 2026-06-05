@@ -1,7 +1,12 @@
 import api from './api'
 
 export const accountingService = {
-  accounts: () => api.get('/accounting/accounts'),
-  journalEntries: () => api.get('/accounting/journal-entries'),
-  ledger: () => api.get('/accounting/general-ledger'),
+  accounts: (params) => api.get('/accounting/accounts', params),
+  createAccount: (payload) => api.post('/accounting/accounts', payload),
+  updateAccount: (id, payload) => api.put(`/accounting/accounts/${id}`, payload),
+  deleteAccount: (id) => api.delete(`/accounting/accounts/${id}`),
+  journalEntries: (params) => api.get('/accounting/journal-entries', params),
+  journalEntry: (id) => api.get(`/accounting/journal-entries/${id}`),
+  createJournalEntry: (payload) => api.post('/accounting/journal-entries', payload),
+  ledger: (params) => api.get('/accounting/general-ledger', params),
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
+import apiClient from '@/utils/apiClient'
 
 const isOpen = ref(false)
 const query = ref('')
@@ -22,7 +23,7 @@ const messages = ref([
   {
     id: 1,
     sender: 'assistant',
-    text: "Hello! I'm your Finance Co-Pilot, powered by AI. I can help you look up invoices, check balances, and manage payables. Try asking me something!",
+    text: "Hey there! 👋 I'm your finance assistant. I can check balances, look up invoices, pull reports, and more. Just ask me anything about your finances!",
     time: formatTime(new Date())
   }
 ])
@@ -51,6 +52,24 @@ const runSuggestion = (suggest) => {
   askAI()
 }
 
+const casualReplies = [
+  { match: /^(hi|hello|hey|howdy|yo|sup|what'?s up)\b/i, reply: ["Hey there! 👋 What can I help you with today?", "Hello! How can I assist you with your finances?", "Hi! Got a question about your accounts, invoices, or reports?"] },
+  { match: /how('?re| are) you|how('?s| is) it going|how('?s| is) everything/i, reply: ["I'm doing great, thanks! 😊 What can I look up for you?", "Doing well! How can I help you with your finances today?", "All good here! What would you like to check on?"] },
+  { match: /^(good|great|nice|cool|awesome|thanks|thank you|thx)\b/i, reply: ["Glad to help! 😊 Anything else you'd like to check?", "You're welcome! Let me know if you need anything else.", "Happy to help! What else can I do for you?"] },
+  { match: /^(bye|goodbye|see you|later|talk later)/i, reply: ["See you later! 👋 Don't hesitate to come back if you need anything.", "Bye! Have a great day!"] },
+]
+
+function randomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function isCasual(text) {
+  for (const entry of casualReplies) {
+    if (entry.match.test(text.trim())) return randomItem(entry.reply)
+  }
+  return null
+}
+
 const askAI = async () => {
   const userText = query.value.trim()
   if (!userText) return
@@ -66,31 +85,39 @@ const askAI = async () => {
   isLoading.value = true
   scrollToBottom()
 
-  try {
-    const response = await fetch('/api/ask-ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ query: userText })
+  const localReply = isCasual(userText)
+  if (localReply) {
+    await new Promise(r => setTimeout(r, 600))
+    messages.value.push({
+      id: Date.now() + 1,
+      sender: 'assistant',
+      text: localReply,
+      time: formatTime(new Date())
     })
+    isLoading.value = false
+    scrollToBottom()
+    return
+  }
 
-    let data
-    try { data = await response.json() }
-    catch { throw new Error('Could not connect to the backend server.') }
+  try {
+    const { data } = await apiClient.post('/ask-ai', { query: userText })
 
-    if (!response.ok) throw new Error(data.error || 'AI request failed.')
+    const reply = data.reply || (data.result?.intent === 'unknown'
+      ? "I'm not sure I understood that. Can you try rephrasing? I can help with invoices, payables, balances, customers, and reports."
+      : '')
 
     messages.value.push({
       id: Date.now() + 1,
       sender: 'assistant',
-      text: data.result?.message || 'Intent successfully parsed!',
-      intent: data.result,
+      text: reply || "Got it! What else would you like to know about your finances?",
       time: formatTime(new Date())
     })
   } catch (err) {
+    const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'An error occurred.'
     messages.value.push({
       id: Date.now() + 2,
       sender: 'assistant',
-      text: err.message || 'An error occurred.',
+      text: msg,
       isError: true,
       time: formatTime(new Date())
     })
@@ -141,8 +168,8 @@ const askAI = async () => {
             <div class="copilot-welcome-icon">
               <i class="ri-sparkling-2-fill"></i>
             </div>
-            <p class="copilot-welcome-title">How can I help you?</p>
-            <p class="copilot-welcome-sub">Ask about invoices, payables, balances, or vendors.</p>
+              <p class="copilot-welcome-title">What would you like to know?</p>
+              <p class="copilot-welcome-sub">Balances, invoices, reports, customers — just ask!</p>
           </div>
 
           <div
@@ -158,32 +185,6 @@ const askAI = async () => {
             <div class="copilot-msg-body">
               <div :class="['copilot-bubble', msg.isError ? 'bubble-error' : '']">
                 <p class="copilot-bubble-text">{{ msg.text }}</p>
-
-                <!-- Intent Card -->
-                <div v-if="msg.intent" class="copilot-intent">
-                  <div class="copilot-intent-head">
-                    <div class="copilot-intent-icon"><i class="ri-terminal-box-line"></i></div>
-                    <span>Parsed Intent</span>
-                  </div>
-                  <div class="copilot-intent-grid">
-                    <div class="copilot-intent-item">
-                      <span class="copilot-intent-key">Intent</span>
-                      <span class="copilot-intent-badge">{{ msg.intent.intent }}</span>
-                    </div>
-                    <div v-if="msg.intent.target" class="copilot-intent-item">
-                      <span class="copilot-intent-key">Target</span>
-                      <code class="copilot-intent-code">{{ msg.intent.target }}</code>
-                    </div>
-                    <div v-if="msg.intent.filters && Object.keys(msg.intent.filters).length" class="copilot-intent-item">
-                      <span class="copilot-intent-key">Filters</span>
-                      <div class="copilot-intent-pills">
-                        <span v-for="(val, key) in msg.intent.filters" :key="key" class="copilot-pill">
-                          {{ key }}: <strong>{{ val }}</strong>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
               <span class="copilot-msg-ts">{{ msg.time }}</span>
             </div>

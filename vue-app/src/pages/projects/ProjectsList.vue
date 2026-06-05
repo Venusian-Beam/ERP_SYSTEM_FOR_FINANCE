@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import apiClient from '@/utils/apiClient'
+import { projectsService } from '@/services/projectsService'
 import { exportToCSV } from '@/utils/exportUtils'
 
 const router = useRouter()
@@ -19,8 +19,8 @@ const modalForm = ref({ name: '', status: 'planning', due_date: '', budget_amoun
 const fetchProjects = async () => {
   loading.value = true
   try {
-    const { data } = await apiClient.get('/projects')
-    projects.value = data
+    const data = await projectsService.projects()
+    projects.value = data.records || data.data || data
   } catch (e) {
     console.error('Failed to load projects:', e)
   } finally {
@@ -58,12 +58,13 @@ const openEditModal = (project) => {
 const saveProject = async () => {
   try {
     if (editingProject.value) {
-      const { data } = await apiClient.put(`/projects/${editingProject.value.id}`, modalForm.value)
-      const idx = projects.value.findIndex(p => p.id === data.id)
-      if (idx !== -1) projects.value[idx] = data
+      const data = await projectsService.updateProject(editingProject.value.id, modalForm.value)
+      const record = data.record || data
+      const idx = projects.value.findIndex(p => p.id === record.id)
+      if (idx !== -1) projects.value[idx] = record
     } else {
-      const { data } = await apiClient.post('/projects', modalForm.value)
-      projects.value.unshift(data)
+      const data = await projectsService.createProject(modalForm.value)
+      projects.value.unshift(data.record || data)
     }
     showModal.value = false
   } catch (e) {
@@ -74,7 +75,7 @@ const saveProject = async () => {
 const deleteProject = async (project) => {
   if (!confirm(`Permanently delete "${project.name}" and all its tasks?`)) return
   try {
-    await apiClient.delete(`/projects/${project.id}`)
+    await projectsService.deleteProject(project.id)
     projects.value = projects.value.filter(p => p.id !== project.id)
   } catch (e) {
     alert('Error deleting project.')
@@ -100,8 +101,8 @@ const formatDate = (dateStr) => {
 }
 
 const formatCurrency = (amount) => {
-  if (!amount) return '$0'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+  if (!amount) return 'GHC 0'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'GHS', maximumFractionDigits: 0 }).format(amount)
 }
 
 const handleExport = () => {
@@ -147,7 +148,7 @@ const handleExport = () => {
 
       <div class="box-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover whitespace-nowrap">
+          <table class="table-standard">
             <thead>
               <tr>
                 <th>Project</th>

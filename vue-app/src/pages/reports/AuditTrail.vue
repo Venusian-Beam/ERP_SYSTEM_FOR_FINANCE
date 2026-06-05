@@ -1,7 +1,19 @@
 <script setup>
 import FinanceListWorkspace from '@/components/finance/FinanceListWorkspace.vue'
-const metrics=[{label:'Events today',value:'284',trend:'+12% vs average',icon:'ri-pulse-line'},{label:'Financial changes',value:'48',trend:'All fully traceable',icon:'ri-file-shield-2-line',tone:'success'},{label:'Security events',value:'3',trend:'No critical findings',icon:'ri-shield-check-line',tone:'success'},{label:'Retention coverage',value:'7 years',trend:'SOX policy enabled',icon:'ri-archive-line'}]
-const columns=[{key:'time',label:'Timestamp',primary:true},{key:'user',label:'User'},{key:'action',label:'Action'},{key:'record',label:'Record'},{key:'ip',label:'IP Address'},{key:'status',label:'Result',type:'status'}]
-const records=[{id:1,time:'Jun 03, 2026 · 13:42',user:'Patrick Mensah',action:'Approved journal entry',record:'JE-2026-00482',ip:'10.24.8.14',status:'Completed'},{id:2,time:'Jun 03, 2026 · 13:28',user:'Ama Boateng',action:'Updated vendor bank details',record:'Global Logistics',ip:'10.24.8.21',status:'Review'},{id:3,time:'Jun 03, 2026 · 12:54',user:'System OCR',action:'Created bill draft',record:'BILL-1048',ip:'Service account',status:'Completed'},{id:4,time:'Jun 03, 2026 · 11:37',user:'Kwame Owusu',action:'Exported P&L report',record:'FY 2026 YTD',ip:'10.24.8.18',status:'Completed'}]
+import { useApiPayload } from '@/composables/useApiPayload'
+import { reportsService } from '@/services/reportsService'
+
+const { metrics, records } = useApiPayload(reportsService.auditTrail)
+const columns = [
+  { key: 'time', label: 'Time', primary: true },
+  { key: 'user', label: 'User' },
+  { key: 'action', label: 'Action' },
+  { key: 'record', label: 'Record' },
+  { key: 'ip', label: 'IP / Source' },
+  { key: 'status', label: 'Status', type: 'status' },
+]
 </script>
-<template><FinanceListWorkspace title="Audit Trail" subtitle="Search the immutable history of financial and system activity" action-label="Export Audit Log" action-icon="ri-download-2-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Completed','Review']" :insight="{title:'Compliance monitoring is active',text:'One vendor bank detail change is awaiting independent verification under your segregation-of-duties policy.'}" /></template>
+
+<template>
+  <FinanceListWorkspace title="Audit Trail" subtitle="Trace every financial event and control change" action-label="Export Audit Log" action-icon="ri-download-2-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Completed','Review']" :insight="{title:'Audit trail is backend-owned',text:'Events are read from audit logs and enriched with user information.'}" />
+</template>

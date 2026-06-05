@@ -1,14 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { qualityService } from '@/services/qualityService'
 
-const risks = ref([
-  { id: 1, title: 'Resource shortage', category: 'resource', probability: 'high', impact: 'high', status: 'open', owner: 'John Doe' },
-  { id: 2, title: 'Scope creep', category: 'scope', probability: 'medium', impact: 'high', status: 'mitigating', owner: 'Jane Smith' },
-  { id: 3, title: 'Technical debt', category: 'technical', probability: 'high', impact: 'medium', status: 'open', owner: 'Mike Johnson' },
-  { id: 4, title: 'Vendor delay', category: 'external', probability: 'low', impact: 'high', status: 'closed', owner: 'Sarah Wilson' },
-  { id: 5, title: 'Budget overrun', category: 'financial', probability: 'medium', impact: 'high', status: 'mitigating', owner: 'David Brown' }
-])
+const risks = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await qualityService.risks()
+    risks.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load risks:', e)
+  }
+})
 
 const getRiskLevel = (probability, impact) => {
   if (probability === 'high' && impact === 'high') return { class: 'bg-danger', text: 'Critical' }
@@ -22,7 +26,7 @@ const getRiskLevel = (probability, impact) => {
   <div>
     <PageHeader title="Risks & Issues" subtitle="Track and manage project risks">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Add Risk modal not implemented')">
           <i class="ri-add-line me-1"></i> Add Risk
         </button>
       </template>
@@ -78,7 +82,7 @@ const getRiskLevel = (probability, impact) => {
             <h5 class="box-title">Risk Register</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Risk</th>

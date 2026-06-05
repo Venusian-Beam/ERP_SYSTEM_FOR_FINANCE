@@ -1,37 +1,28 @@
 <script setup>
 import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import apiClient from '@/utils/apiClient'
 
-const reportTypes = ref([
-  { id: 1, name: 'Project Status Report', description: 'Overall project health and progress', icon: 'ri-bar-chart-line', color: 'primary' },
-  { id: 2, name: 'Sprint Report', description: 'Sprint velocity and burndown', icon: 'ri-speed-line', color: 'success' },
-  { id: 3, name: 'Resource Utilization', description: 'Team allocation and availability', icon: 'ri-user-line', color: 'info' },
-  { id: 4, name: 'Budget Report', description: 'Budget vs actual spending', icon: 'ri-money-dollar-circle-line', color: 'warning' },
-  { id: 5, name: 'Risk Report', description: 'Active risks and mitigation status', icon: 'ri-alert-line', color: 'danger' },
-  { id: 6, name: 'Time Tracking Report', description: 'Hours logged by project/task', icon: 'ri-time-line', color: 'secondary' }
-])
+const reportTypes = ref([])
 
 const selectedReport = ref('')
 const dateRange = ref({ start: '', end: '' })
+const processing = ref(false)
 
-const compileForm = useForm({
-  report_type: '',
-  date_start: '',
-  date_end: '',
-  project_id: '',
-  format: 'pdf'
-})
-
-const submitCompile = () => {
-  compileForm.report_type = selectedReport.value
-  compileForm.date_start = dateRange.value.start
-  compileForm.date_end = dateRange.value.end
-  
-  compileForm.post('/api/compliance/compile-archive', {
-    preserveScroll: true,
-    onSuccess: () => console.log('Archive compilation queued deterministically.')
-  })
+const submitCompile = async () => {
+  processing.value = true
+  try {
+    await apiClient.post('/compliance/compile-archive', {
+      report_type: selectedReport.value,
+      date_start: dateRange.value.start,
+      date_end: dateRange.value.end,
+    })
+    console.log('Archive compilation queued.')
+  } catch (e) {
+    console.error('Failed to compile archive:', e)
+  } finally {
+    processing.value = false
+  }
 }
 </script>
 
@@ -88,9 +79,6 @@ const submitCompile = () => {
               <label class="ti-form-label">Project</label>
               <select class="ti-form-select">
                 <option>All Projects</option>
-                <option>Website Redesign</option>
-                <option>Mobile App</option>
-                <option>CRM Integration</option>
               </select>
             </div>
             <div class="mb-4">
@@ -101,10 +89,10 @@ const submitCompile = () => {
                 <button class="ti-btn ti-btn-primary flex-1">Preview</button>
               </div>
             </div>
-            <button class="ti-btn ti-btn-primary w-full" @click="submitCompile" :disabled="compileForm.processing">
-              <span v-if="compileForm.processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <button class="ti-btn ti-btn-primary w-full" @click="submitCompile" :disabled="processing">
+              <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
               <i v-else class="ri-file-chart-line me-1"></i> 
-              {{ compileForm.processing ? 'Compiling Archive...' : 'Compile Compliance Package Archive' }}
+              {{ processing ? 'Compiling Archive...' : 'Compile Compliance Package Archive' }}
             </button>
           </div>
         </div>
@@ -114,23 +102,8 @@ const submitCompile = () => {
           <div class="box-header">
             <h5 class="box-title">Recent Reports</h5>
           </div>
-          <div class="box-body p-0">
-            <ul class="list-group list-group-flush">
-              <li class="list-group-item flex items-center justify-between">
-                <div>
-                  <span class="font-medium block">Sprint 11 Report</span>
-                  <span class="text-xs text-textmuted">Dec 1, 2024</span>
-                </div>
-                <button class="ti-btn ti-btn-soft-primary ti-btn-sm ti-btn-icon"><i class="ri-download-line"></i></button>
-              </li>
-              <li class="list-group-item flex items-center justify-between">
-                <div>
-                  <span class="font-medium block">November Budget</span>
-                  <span class="text-xs text-textmuted">Nov 30, 2024</span>
-                </div>
-                <button class="ti-btn ti-btn-soft-primary ti-btn-sm ti-btn-icon"><i class="ri-download-line"></i></button>
-              </li>
-            </ul>
+          <div class="box-body">
+            <p class="text-textmuted text-center py-4">No reports generated yet.</p>
           </div>
         </div>
       </div>

@@ -1,6 +1,11 @@
 <script setup>
 import FinancialReportWorkspace from '@/components/finance/FinancialReportWorkspace.vue'
-const metrics=[{label:'Operating Cash Flow',value:'GHC 1,024,800',note:'+16.2% vs prior year'},{label:'Investing Cash Flow',value:'-GHC 248,600',note:'Growth investments'},{label:'Net Cash Increase',value:'GHC 622,400',note:'+12.8% YTD'}]
-const sections=[{title:'Operating Activities',rows:[{label:'Net Income',value:'GHC 916,300'},{label:'Depreciation and Amortization',value:'GHC 142,500'},{label:'Changes in Working Capital',value:'-GHC 34,000'}],total:'GHC 1,024,800'},{title:'Investing Activities',rows:[{label:'Purchase of Equipment',value:'-GHC 186,400'},{label:'Software Capitalization',value:'-GHC 62,200'}],total:'-GHC 248,600'},{title:'Financing Activities',rows:[{label:'Debt Repayment',value:'-GHC 104,800'},{label:'Dividends Paid',value:'-GHC 49,000'}],total:'-GHC 153,800'}]
+import { useApiPayload } from '@/composables/useApiPayload'
+import { reportsService } from '@/services/reportsService'
+
+const { metrics, sections } = useApiPayload(reportsService.cashFlow)
 </script>
-<template><FinancialReportWorkspace title="Cash Flow Statement" subtitle="Understand operating, investing, and financing cash movement" :metrics="metrics" :sections="sections" :insight="{title:'Operating cash generation is improving',text:'Collections and improved payment timing added approximately GHC 118,000 to operating cash flow this quarter.'}" /></template>
+
+<template>
+  <FinancialReportWorkspace title="Cash Flow Statement" subtitle="Understand operating cash movement" :metrics="metrics" :sections="sections" :insight="{title:'Cash flow uses bank activity',text:'Inflows and outflows are calculated from backend bank transactions.'}" />
+</template>

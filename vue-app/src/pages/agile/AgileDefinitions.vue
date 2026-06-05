@@ -1,24 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { agileService } from '@/services/agileService'
 
-const dorItems = ref([
-  { id: 1, text: 'User story is clearly defined with acceptance criteria', checked: true },
-  { id: 2, text: 'Story has been estimated by the team', checked: true },
-  { id: 3, text: 'Dependencies have been identified and resolved', checked: false },
-  { id: 4, text: 'Design mockups are approved (if applicable)', checked: true },
-  { id: 5, text: 'Technical approach has been discussed', checked: false }
-])
+const dorItems = ref([])
+const dodItems = ref([])
 
-const dodItems = ref([
-  { id: 1, text: 'Code has been peer reviewed', checked: true },
-  { id: 2, text: 'Unit tests written and passing', checked: true },
-  { id: 3, text: 'Integration tests passing', checked: false },
-  { id: 4, text: 'Documentation updated', checked: false },
-  { id: 5, text: 'Deployed to staging environment', checked: true },
-  { id: 6, text: 'QA testing completed', checked: false },
-  { id: 7, text: 'Product owner has approved', checked: false }
-])
+onMounted(async () => {
+  try {
+    const data = await agileService.definitions()
+    const defs = data.record || data
+    dorItems.value = defs.dor || []
+    dodItems.value = defs.dod || []
+  } catch (e) {
+    console.error('Failed to load definitions:', e)
+  }
+})
 
 const completionRate = (items) => {
   const completed = items.filter(i => i.checked).length
@@ -30,7 +27,7 @@ const completionRate = (items) => {
   <div>
     <PageHeader title="DoR / DoD Framework" subtitle="Definition of Ready and Definition of Done checklists">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Configure definitions modal not implemented')">
           <i class="ri-settings-3-line me-1"></i> Configure
         </button>
       </template>

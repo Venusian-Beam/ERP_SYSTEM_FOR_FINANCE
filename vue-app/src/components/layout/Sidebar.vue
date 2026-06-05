@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 
 defineProps({
   open: {
@@ -11,6 +12,13 @@ defineProps({
 
 const emit = defineEmits(['close'])
 const route = useRoute()
+const router = useRouter()
+const { state, logout } = useAuth()
+
+const handleLogout = () => {
+  logout()
+  router.push({ name: 'Login' })
+}
 
 const activeDropdown = ref(null)
 const mobileMenuOpen = ref(false)
@@ -156,37 +164,42 @@ const menuItems = [
       },
     ],
   },
-  {
-    id: 'settings',
-    label: 'Settings',
-    icon: 'ri-settings-3-line',
-    children: [
-      {
-        label: 'Company',
-        to: '/settings/company',
-        icon: 'ri-building-line',
-        desc: 'Fiscal year & currency'
-      },
-      {
-        label: 'Users',
-        to: '/settings/users',
-        icon: 'ri-team-line',
-        desc: 'Manage team members'
-      },
-      {
-        label: 'Roles',
-        to: '/settings/roles',
-        icon: 'ri-shield-user-line',
-        desc: 'Permissions & access'
-      },
-      {
-        label: 'Preferences',
-        to: '/settings/preferences',
-        icon: 'ri-equalizer-line',
-        desc: 'System preferences'
-      },
-    ],
-  },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: 'ri-settings-3-line',
+      children: [
+        {
+          label: 'Company',
+          to: '/settings/company',
+          icon: 'ri-building-line',
+          desc: 'Fiscal year & currency'
+        },
+        {
+          label: 'Users',
+          to: '/settings/users',
+          icon: 'ri-team-line',
+          desc: 'Manage team members'
+        },
+        {
+          label: 'Roles',
+          to: '/settings/roles',
+          icon: 'ri-shield-user-line',
+          desc: 'Permissions & access'
+        },
+        {
+          label: 'Preferences',
+          to: '/settings/preferences',
+          icon: 'ri-equalizer-line',
+          desc: 'System preferences'
+        },
+        {
+          label: 'Logout',
+          icon: 'ri-logout-box-line',
+          action: 'logout'
+        },
+      ],
+    },
 ]
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -326,41 +339,61 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <!-- Panel Items -->
-                <div class="dropdown-items">
-                  <router-link
-                    v-for="child in item.children"
-                    :key="child.to"
-                    :to="child.to"
-                    class="dropdown-item"
-                    :class="{ 'dropdown-item-active': isActive(child.to) }"
-                    @click="closeDropdown"
-                  >
-                    <div class="dropdown-item-icon">
-                      <i :class="child.icon"></i>
-                    </div>
-                    <div class="dropdown-item-body">
-                      <div class="dropdown-item-label-row">
-                        <span class="dropdown-item-label">
-                          {{ child.label }}
-                        </span>
-                        <span
-                          v-if="child.badge"
-                          class="dropdown-item-badge"
-                        >
-                          {{ child.badge }}
-                        </span>
-                      </div>
-                      <span class="dropdown-item-desc">
-                        {{ child.desc }}
-                      </span>
-                    </div>
-                    <i
-                      v-if="isActive(child.to)"
-                      class="ri-check-line dropdown-item-check"
-                    ></i>
-                  </router-link>
-                </div>
+                 <!-- Panel Items -->
+                 <div class="dropdown-items">
+                   <template v-for="child in item.children" :key="child.to || child.label">
+                     <template v-if="child.action === 'logout'">
+                       <button
+                         class="dropdown-item"
+                         @click.prevent="handleLogout"
+                         style="border:none;"
+                       >
+                         <div class="dropdown-item-icon">
+                           <i :class="child.icon"></i>
+                         </div>
+                         <div class="dropdown-item-body">
+                           <div class="dropdown-item-label-row">
+                             <span class="dropdown-item-label">
+                               {{ child.label }}
+                             </span>
+                           </div>
+                         </div>
+                       </button>
+                     </template>
+                     <template v-else>
+                       <router-link
+                         :to="child.to"
+                         class="dropdown-item"
+                         :class="{ 'dropdown-item-active': isActive(child.to) }"
+                         @click="closeDropdown"
+                       >
+                         <div class="dropdown-item-icon">
+                           <i :class="child.icon"></i>
+                         </div>
+                         <div class="dropdown-item-body">
+                           <div class="dropdown-item-label-row">
+                             <span class="dropdown-item-label">
+                               {{ child.label }}
+                             </span>
+                             <span
+                               v-if="child.badge"
+                               class="dropdown-item-badge"
+                             >
+                               {{ child.badge }}
+                             </span>
+                           </div>
+                           <span class="dropdown-item-desc">
+                             {{ child.desc }}
+                           </span>
+                         </div>
+                         <i
+                           v-if="isActive(child.to)"
+                           class="ri-check-line dropdown-item-check"
+                         ></i>
+                       </router-link>
+                     </template>
+                   </template>
+                 </div>
               </div>
             </transition>
           </li>
@@ -383,8 +416,10 @@ onUnmounted(() => {
 
         <!-- User Avatar -->
         <router-link to="/settings/users" class="user-btn" aria-label="User menu">
-          <div class="user-avatar">PM</div>
-          <span class="user-name">Patrick M.</span>
+          <div class="user-avatar">
+            {{ state.user?.name?.charAt(0).toUpperCase() ?? '?' }}
+          </div>
+          <span class="user-name">{{ state.user?.name }}</span>
         </router-link>
 
         <!-- Mobile Hamburger -->
@@ -438,53 +473,68 @@ onUnmounted(() => {
                   ></i>
                 </button>
 
-                <transition name="mobile-expand">
-                  <ul
-                    v-if="isMobileExpanded(item.id)"
-                    class="mobile-submenu"
-                  >
-                    <li
-                      v-for="child in item.children"
-                      :key="child.to"
-                    >
-                      <router-link
-                        :to="child.to"
-                        class="mobile-child-link"
-                        :class="{
-                          'mobile-child-active': isActive(child.to)
-                        }"
-                        @click="closeMobileMenu"
-                      >
-                        <i :class="child.icon"></i>
-                        <span>{{ child.label }}</span>
-                        <span
-                          v-if="child.badge"
-                          class="mobile-badge"
-                        >
-                          {{ child.badge }}
-                        </span>
-                      </router-link>
-                    </li>
-                  </ul>
-                </transition>
+                 <transition name="mobile-expand">
+                   <ul
+                     v-if="isMobileExpanded(item.id)"
+                     class="mobile-submenu"
+                   >
+                     <template v-for="child in item.children" :key="child.to || child.label">
+                       <template v-if="child.action === 'logout'">
+                         <li>
+                           <button
+                             class="mobile-child-link"
+                             @click.prevent="handleLogout"
+                             style="border:none;"
+                           >
+                             <i :class="child.icon"></i>
+                             <span>{{ child.label }}</span>
+                           </button>
+                         </li>
+                       </template>
+                       <template v-else>
+                         <li>
+                           <router-link
+                             :to="child.to"
+                             class="mobile-child-link"
+                             :class="{
+                               'mobile-child-active': isActive(child.to)
+                             }"
+                             @click="closeMobileMenu"
+                           >
+                             <i :class="child.icon"></i>
+                             <span>{{ child.label }}</span>
+                             <span
+                               v-if="child.badge"
+                               class="mobile-badge"
+                             >
+                               {{ child.badge }}
+                             </span>
+                           </router-link>
+                         </li>
+                       </template>
+                     </template>
+                   </ul>
+                 </transition>
               </template>
             </li>
           </ul>
 
-          <!-- Mobile Footer -->
-          <div class="mobile-footer">
-            <div class="mobile-user">
-              <div class="user-avatar">PM</div>
-              <div>
-                <p class="mobile-user-name">Patrick M.</p>
-                <p class="mobile-user-role">Chief Financial Officer</p>
-              </div>
-            </div>
-            <div class="mobile-period">
-              <i class="ri-calendar-check-line"></i>
-              <span>Current Period: FY 2026</span>
-            </div>
-          </div>
+           <!-- Mobile Footer -->
+           <div class="mobile-footer">
+             <div class="mobile-user">
+               <div class="user-avatar">
+                 {{ state.user?.name?.charAt(0).toUpperCase() ?? '?' }}
+               </div>
+               <div>
+                 <p class="mobile-user-name">{{ state.user?.name }}</p>
+                 <p class="mobile-user-role">{{ state.user?.role }}</p>
+               </div>
+             </div>
+             <div class="mobile-period">
+               <i class="ri-calendar-check-line"></i>
+               <span>Current Period: FY 2026</span>
+             </div>
+           </div>
         </div>
       </div>
     </transition>

@@ -1,20 +1,19 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { agileService } from '@/services/agileService'
 
-const sprints = ref([
-  { id: 1, name: 'Sprint 12', startDate: '2024-12-02', endDate: '2024-12-15', status: 'active', points: 34, completed: 22 },
-  { id: 2, name: 'Sprint 11', startDate: '2024-11-18', endDate: '2024-12-01', status: 'completed', points: 40, completed: 38 },
-  { id: 3, name: 'Sprint 13', startDate: '2024-12-16', endDate: '2024-12-29', status: 'planned', points: 30, completed: 0 }
-])
+const sprints = ref([])
+const currentSprint = ref({})
 
-const currentSprint = ref({
-  name: 'Sprint 12',
-  goal: 'Complete user authentication and dashboard features',
-  daysRemaining: 8,
-  totalPoints: 34,
-  completedPoints: 22,
-  tasks: { total: 20, done: 13, inProgress: 5, todo: 2 }
+onMounted(async () => {
+  try {
+    const data = await agileService.sprints()
+    sprints.value = data.records || data
+    currentSprint.value = data.current_sprint || sprints.value.find(s => s.status === 'active') || {}
+  } catch (e) {
+    console.error('Failed to load sprints:', e)
+  }
 })
 </script>
 
@@ -22,7 +21,7 @@ const currentSprint = ref({
   <div>
     <PageHeader title="Sprints" subtitle="Manage sprint cycles and iterations">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('New Sprint modal not implemented')">
           <i class="ri-add-line me-1"></i> New Sprint
         </button>
       </template>
@@ -85,7 +84,7 @@ const currentSprint = ref({
             <h5 class="box-title">All Sprints</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Sprint</th>

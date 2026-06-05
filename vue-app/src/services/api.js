@@ -1,20 +1,17 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+import apiClient from '@/utils/apiClient'
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
+  const { method = 'GET', body, params, headers, ...rest } = options
+  const { data } = await apiClient.request({
+    url: path,
+    method,
+    data: body ? JSON.parse(body) : undefined,
+    params,
+    headers,
+    ...rest,
   })
 
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`)
-  }
-
-  return response.status === 204 ? null : response.json()
+  return data
 }
 
 export default {

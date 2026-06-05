@@ -17,12 +17,11 @@ use App\Models\Payment;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
-use App\Models\Tenant;
 use App\Models\User;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 final class FinanceDataController extends Controller
@@ -84,13 +83,17 @@ final class FinanceDataController extends Controller
     public function journalEntries(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $entries = JournalEntry::query()->withCount('lines')->latest('posted_at')->get();
+            $totalEntries = JournalEntry::query()->count();
+            $postedEntries = JournalEntry::query()->where('status', 'posted')->count();
+            $draftEntries = JournalEntry::query()->where('status', 'draft')->count();
+
+            $entries = JournalEntry::query()->withCount('lines')->latest('posted_at')->paginate(per_page: 20)->withQueryString();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Journal entries', (string) $entries->count(), 'All ledger batches', 'ri-book-2-line'),
-                    $this->metric('Posted entries', (string) $entries->where('status', 'posted')->count(), 'Locked to the ledger', 'ri-check-double-line', 'success'),
-                    $this->metric('Draft entries', (string) $entries->where('status', 'draft')->count(), 'Awaiting posting', 'ri-draft-line', 'warning'),
+                    $this->metric('Journal entries', (string) $totalEntries, 'All ledger batches', 'ri-book-2-line'),
+                    $this->metric('Posted entries', (string) $postedEntries, 'Locked to the ledger', 'ri-check-double-line', 'success'),
+                    $this->metric('Draft entries', (string) $draftEntries, 'Awaiting posting', 'ri-draft-line', 'warning'),
                 ],
                 'records' => $entries->map(fn (JournalEntry $entry): array => [
                     'id' => $entry->id,
@@ -109,17 +112,25 @@ final class FinanceDataController extends Controller
         return $this->forTenant($request, function () use ($request): JsonResponse {
             $from = $request->input('from', now()->startOfYear()->toDateString());
             $to = $request->input('to', now()->toDateString());
-            $lines = JournalLine::query()
+
+            $baseQuery = JournalLine::query()
+                ->whereHas('entry', fn ($query) => $query->where('status', 'posted')->whereBetween('posted_at', [$from, $to]));
+
+            $totalDebits = (float) (clone $baseQuery)->sum('debit');
+            $totalCredits = (float) (clone $baseQuery)->sum('credit');
+            $totalLines = (int) (clone $baseQuery)->count();
+
+            $lines = (clone $baseQuery)
                 ->with(['entry:id,reference,posted_at,description,status', 'account:id,code,name,type'])
-                ->whereHas('entry', fn ($query) => $query->where('status', 'posted')->whereBetween('posted_at', [$from, $to]))
                 ->latest('id')
-                ->get();
+                ->paginate(per_page: 50)
+                ->withQueryString();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Ledger lines', (string) $lines->count(), "$from to $to", 'ri-list-check-3'),
-                    $this->metric('Total debits', $this->money($lines->sum('debit')), 'Posted period', 'ri-arrow-left-down-line'),
-                    $this->metric('Total credits', $this->money($lines->sum('credit')), 'Posted period', 'ri-arrow-right-up-line'),
+                    $this->metric('Ledger lines', (string) $totalLines, "$from to $to", 'ri-list-check-3'),
+                    $this->metric('Total debits', $this->money($totalDebits), 'Posted period', 'ri-arrow-left-down-line'),
+                    $this->metric('Total credits', $this->money($totalCredits), 'Posted period', 'ri-arrow-right-up-line'),
                 ],
                 'records' => $lines->map(fn (JournalLine $line): array => [
                     'id' => $line->id,
@@ -131,6 +142,12 @@ final class FinanceDataController extends Controller
                     'credit' => (float) $line->credit,
                     'status' => ucfirst((string) ($line->entry?->status ?? 'posted')),
                 ])->values(),
+                'pagination' => [
+                    'current_page' => $lines->currentPage(),
+                    'last_page' => $lines->lastPage(),
+                    'per_page' => $lines->perPage(),
+                    'total' => $lines->total(),
+                ],
             ]);
         });
     }
@@ -142,13 +159,18 @@ final class FinanceDataController extends Controller
                 ->withCount('invoices')
                 ->withSum(['invoices as open_balance' => fn ($query) => $query->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])], 'amount')
                 ->orderBy('name')
-                ->get();
+                ->paginate(per_page: 20)->withQueryString();
+
+            $totalVendors = Supplier::query()->count();
+            $activeVendors = Supplier::query()->where('status', 'active')->count();
+            $openBalance = (float) SupplierInvoice::query()->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])->sum('amount');
+            $totalBills = (int) SupplierInvoice::query()->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Vendors', (string) $vendors->count(), $vendors->where('status', 'active')->count().' active', 'ri-store-2-line'),
-                    $this->metric('Open balance', $this->money($vendors->sum('open_balance')), 'Unpaid vendor invoices', 'ri-wallet-3-line', 'warning'),
-                    $this->metric('Linked bills', (string) $vendors->sum('invoices_count'), 'Supplier invoice count', 'ri-file-list-3-line'),
+                    $this->metric('Vendors', (string) $totalVendors, $activeVendors.' active', 'ri-store-2-line'),
+                    $this->metric('Open balance', $this->money($openBalance), 'Unpaid vendor invoices', 'ri-wallet-3-line', 'warning'),
+                    $this->metric('Linked bills', (string) $totalBills, 'Supplier invoice count', 'ri-file-list-3-line'),
                 ],
                 'records' => $vendors->map(fn (Supplier $vendor): array => [
                     'id' => $vendor->id,
@@ -166,14 +188,23 @@ final class FinanceDataController extends Controller
     public function bills(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $bills = SupplierInvoice::query()->with('supplier:id,name')->latest('invoice_date')->get();
-            $dueThisWeek = $bills->filter(fn (SupplierInvoice $bill): bool => $bill->due_date?->between(now(), now()->addWeek()) ?? false);
+            $bills = SupplierInvoice::query()->with('supplier:id,name')->latest('invoice_date')->paginate(per_page: 20)->withQueryString();
+            $totalOpen = (float) SupplierInvoice::query()->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])->sum('amount');
+            $totalDueThisWeek = (float) SupplierInvoice::query()
+                ->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])
+                ->whereBetween('due_date', [now()->toDateString(), now()->addWeek()->toDateString()])
+                ->sum('amount');
+            $dueThisWeekCount = SupplierInvoice::query()
+                ->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])
+                ->whereBetween('due_date', [now()->toDateString(), now()->addWeek()->toDateString()])
+                ->count();
+            $pendingAmount = (float) SupplierInvoice::query()->whereIn('status', ['pending', 'pending_approval'])->sum('amount');
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Open bills', $this->money($bills->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])->sum('amount')), 'Awaiting payment', 'ri-file-text-line', 'warning'),
-                    $this->metric('Due this week', $this->money($dueThisWeek->sum('amount')), $dueThisWeek->count().' bills require action', 'ri-calendar-event-line', 'danger'),
-                    $this->metric('Pending approval', $this->money($bills->whereIn('status', ['pending', 'pending_approval'])->sum('amount')), 'Awaiting review', 'ri-shield-check-line'),
+                    $this->metric('Open bills', $this->money($totalOpen), 'Awaiting payment', 'ri-file-text-line', 'warning'),
+                    $this->metric('Due this week', $this->money($totalDueThisWeek), $dueThisWeekCount.' bills require action', 'ri-calendar-event-line', 'danger'),
+                    $this->metric('Pending approval', $this->money($pendingAmount), 'Awaiting review', 'ri-shield-check-line'),
                 ],
                 'records' => $bills->map(fn (SupplierInvoice $bill): array => [
                     'id' => $bill->id,
@@ -191,12 +222,14 @@ final class FinanceDataController extends Controller
     public function payments(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $payments = Payment::query()->with('invoice.customer:id,name')->latest('paid_at')->get();
+            $payments = Payment::query()->with('invoice.customer:id,name')->latest('paid_at')->paginate(per_page: 20)->withQueryString();
+            $totalAmount = (float) Payment::query()->sum('amount');
+            $totalCount = Payment::query()->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Payments', $this->money($payments->sum('amount')), 'Recorded payments', 'ri-bank-card-line', 'success'),
-                    $this->metric('Payment runs', (string) $payments->count(), 'All payment records', 'ri-play-list-add-line'),
+                    $this->metric('Payments', $this->money($totalAmount), 'Recorded payments', 'ri-bank-card-line', 'success'),
+                    $this->metric('Payment runs', (string) $totalCount, 'All payment records', 'ri-play-list-add-line'),
                 ],
                 'records' => $payments->map(fn (Payment $payment): array => [
                     'id' => $payment->id,
@@ -219,13 +252,17 @@ final class FinanceDataController extends Controller
                 ->withSum('invoices as total_amount', 'amount')
                 ->withSum('invoices as total_paid', 'paid_amount')
                 ->orderBy('name')
-                ->get();
+                ->paginate(per_page: 20)->withQueryString();
+
+            $totalReceivables = (float) CustomerInvoice::query()->sum('amount') - (float) CustomerInvoice::query()->sum('paid_amount');
+            $activeCount = Customer::query()->where('status', 'active')->count();
+            $invoiceCount = (int) CustomerInvoice::query()->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Total receivables', $this->money($customers->sum(fn (Customer $customer): float => (float) ($customer->total_amount ?? 0) - (float) ($customer->total_paid ?? 0))), 'Open customer balance', 'ri-wallet-3-line'),
-                    $this->metric('Active customers', (string) $customers->where('status', 'active')->count(), 'Ready for invoicing', 'ri-user-heart-line', 'success'),
-                    $this->metric('Invoices', (string) $customers->sum('invoices_count'), 'Customer invoice count', 'ri-file-list-3-line'),
+                    $this->metric('Total receivables', $this->money($totalReceivables), 'Open customer balance', 'ri-wallet-3-line'),
+                    $this->metric('Active customers', (string) $activeCount, 'Ready for invoicing', 'ri-user-heart-line', 'success'),
+                    $this->metric('Invoices', (string) $invoiceCount, 'Customer invoice count', 'ri-file-list-3-line'),
                 ],
                 'records' => $customers->map(fn (Customer $customer): array => [
                     'id' => $customer->id,
@@ -243,15 +280,24 @@ final class FinanceDataController extends Controller
     public function receivableInvoices(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $invoices = CustomerInvoice::query()->with('customer:id,name')->latest('invoice_date')->get();
-            $open = $invoices->whereIn('status', ['open', 'issued', 'partial', 'partially_paid', 'overdue']);
-            $overdue = $invoices->filter(fn (CustomerInvoice $invoice): bool => ($invoice->due_date?->isPast() ?? false) && ! in_array($invoice->status, ['paid'], true));
+            $invoices = CustomerInvoice::query()->with('customer:id,name')->latest('invoice_date')->paginate(per_page: 20)->withQueryString();
+            $openAmount = (float) CustomerInvoice::query()->whereIn('status', ['open', 'issued', 'partial', 'partially_paid', 'overdue'])
+                ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as total')->value('total');
+            $openCount = CustomerInvoice::query()->whereIn('status', ['open', 'issued', 'partial', 'partially_paid', 'overdue'])->count();
+            $overdueAmount = (float) CustomerInvoice::query()
+                ->whereDate('due_date', '<', now()->toDateString())
+                ->whereNotIn('status', ['paid'])
+                ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as total')->value('total');
+            $overdueCount = CustomerInvoice::query()
+                ->whereDate('due_date', '<', now()->toDateString())
+                ->whereNotIn('status', ['paid'])->count();
+            $collected = (float) CustomerInvoice::query()->sum('paid_amount');
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Outstanding invoices', $this->money($open->sum(fn (CustomerInvoice $invoice): float => (float) $invoice->amount - (float) $invoice->paid_amount)), $open->count().' open invoices', 'ri-bill-line'),
-                    $this->metric('Overdue', $this->money($overdue->sum(fn (CustomerInvoice $invoice): float => (float) $invoice->amount - (float) $invoice->paid_amount)), $overdue->count().' invoices past due', 'ri-error-warning-line', 'danger'),
-                    $this->metric('Collected', $this->money($invoices->sum('paid_amount')), 'Recorded customer payments', 'ri-hand-coin-line', 'success'),
+                    $this->metric('Outstanding invoices', $this->money($openAmount), $openCount.' open invoices', 'ri-bill-line'),
+                    $this->metric('Overdue', $this->money($overdueAmount), $overdueCount.' invoices past due', 'ri-error-warning-line', 'danger'),
+                    $this->metric('Collected', $this->money($collected), 'Recorded customer payments', 'ri-hand-coin-line', 'success'),
                 ],
                 'records' => $invoices->map(fn (CustomerInvoice $invoice): array => [
                     'id' => $invoice->id,
@@ -269,12 +315,14 @@ final class FinanceDataController extends Controller
     public function receipts(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $payments = Payment::query()->with('invoice.customer:id,name')->latest('paid_at')->get();
+            $payments = Payment::query()->with('invoice.customer:id,name')->latest('paid_at')->paginate(per_page: 20)->withQueryString();
+            $totalAmount = (float) Payment::query()->sum('amount');
+            $totalCount = Payment::query()->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Receipts', $this->money($payments->sum('amount')), 'Recorded customer cash', 'ri-hand-coin-line', 'success'),
-                    $this->metric('Auto-match rate', $payments->count() > 0 ? '100%' : '0%', 'Matched to invoices', 'ri-link-m', 'success'),
+                    $this->metric('Receipts', $this->money($totalAmount), 'Recorded customer cash', 'ri-hand-coin-line', 'success'),
+                    $this->metric('Auto-match rate', $totalCount > 0 ? '100%' : '0%', 'Matched to invoices', 'ri-link-m', 'success'),
                 ],
                 'records' => $payments->map(fn (Payment $payment): array => [
                     'id' => $payment->id,
@@ -292,14 +340,18 @@ final class FinanceDataController extends Controller
     public function bankAccounts(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $accounts = BankAccount::query()->withCount('transactions')->orderBy('bank_name')->get();
-            $unreconciled = BankTransaction::query()->where('reconciliation_status', 'unreconciled')->get();
+            $accounts = BankAccount::query()->withCount('transactions')->orderBy('bank_name')->paginate(per_page: 20)->withQueryString();
+            $totalCash = (float) BankAccount::query()->sum('current_balance');
+            $totalAvailable = (float) BankAccount::query()->sum('available_balance');
+            $accountCount = BankAccount::query()->count();
+            $unreconciledAmount = (float) BankTransaction::query()->where('reconciliation_status', 'unreconciled')->sum('amount');
+            $unreconciledCount = BankTransaction::query()->where('reconciliation_status', 'unreconciled')->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Total cash position', $this->money($accounts->sum('current_balance')), 'Across '.$accounts->count().' accounts', 'ri-safe-2-line', 'success'),
-                    $this->metric('Available balance', $this->money($accounts->sum('available_balance')), 'Available today', 'ri-bank-line'),
-                    $this->metric('Unreconciled', $this->money($unreconciled->sum('amount')), $unreconciled->count().' transactions', 'ri-exchange-dollar-line', 'warning'),
+                    $this->metric('Total cash position', $this->money($totalCash), 'Across '.$accountCount.' accounts', 'ri-safe-2-line', 'success'),
+                    $this->metric('Available balance', $this->money($totalAvailable), 'Available today', 'ri-bank-line'),
+                    $this->metric('Unreconciled', $this->money($unreconciledAmount), $unreconciledCount.' transactions', 'ri-exchange-dollar-line', 'warning'),
                 ],
                 'records' => $accounts->map(fn (BankAccount $account): array => [
                     'id' => $account->id,
@@ -317,14 +369,16 @@ final class FinanceDataController extends Controller
     public function reconciliation(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $transactions = BankTransaction::query()->with('journalEntry:id,reference')->latest('transaction_date')->get();
-            $matched = $transactions->where('reconciliation_status', 'reconciled');
-            $unmatched = $transactions->where('reconciliation_status', 'unreconciled');
+            $transactions = BankTransaction::query()->with('journalEntry:id,reference')->latest('transaction_date')->paginate(per_page: 20)->withQueryString();
+            $matchedAmount = (float) BankTransaction::query()->where('reconciliation_status', 'reconciled')->sum('amount');
+            $matchedCount = BankTransaction::query()->where('reconciliation_status', 'reconciled')->count();
+            $unmatchedCount = BankTransaction::query()->where('reconciliation_status', 'unreconciled')->count();
+            $unmatchedAmount = (float) BankTransaction::query()->where('reconciliation_status', 'unreconciled')->sum('amount');
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Reconciled this month', $this->money($matched->sum('amount')), $matched->count().' transactions', 'ri-check-double-line', 'success'),
-                    $this->metric('Unmatched items', (string) $unmatched->count(), $this->money($unmatched->sum('amount')).' total', 'ri-question-line', 'warning'),
+                    $this->metric('Reconciled this month', $this->money($matchedAmount), $matchedCount.' transactions', 'ri-check-double-line', 'success'),
+                    $this->metric('Unmatched items', (string) $unmatchedCount, $this->money($unmatchedAmount).' total', 'ri-question-line', 'warning'),
                 ],
                 'records' => $transactions->map(fn (BankTransaction $transaction): array => [
                     'id' => $transaction->id,
@@ -414,12 +468,15 @@ final class FinanceDataController extends Controller
     public function auditTrail(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $logs = AuditLog::query()->with('user:id,name')->latest()->take(100)->get();
+            $totalEvents = AuditLog::query()->count();
+            $financialChanges = AuditLog::query()->whereNotNull('auditable_type')->count();
+
+            $logs = AuditLog::query()->with('user:id,name')->latest()->paginate(per_page: 50)->withQueryString();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Audit events', (string) $logs->count(), 'Latest records', 'ri-pulse-line'),
-                    $this->metric('Financial changes', (string) $logs->where('auditable_type', '!=', null)->count(), 'Fully traceable', 'ri-file-shield-2-line', 'success'),
+                    $this->metric('Audit events', (string) $totalEvents, 'Latest records', 'ri-pulse-line'),
+                    $this->metric('Financial changes', (string) $financialChanges, 'Fully traceable', 'ri-file-shield-2-line', 'success'),
                 ],
                 'records' => $logs->map(fn (AuditLog $log): array => [
                     'id' => $log->id,
@@ -436,12 +493,14 @@ final class FinanceDataController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        return $this->forTenant($request, function (): JsonResponse {
-            $users = User::query()->latest()->get();
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $tenantId = $request->user()->tenant_id;
+            $users = User::query()->where('tenant_id', $tenantId)->latest()->paginate(per_page: 20)->withQueryString();
+            $totalUsers = User::query()->where('tenant_id', $tenantId)->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Active users', (string) $users->count(), 'Tenant users', 'ri-team-line', 'success'),
+                    $this->metric('Active users', (string) $totalUsers, 'Tenant users', 'ri-team-line', 'success'),
                     $this->metric('Pending invitations', '0', 'No pending invites', 'ri-mail-add-line'),
                 ],
                 'records' => $users->map(fn (User $user): array => [
@@ -460,11 +519,12 @@ final class FinanceDataController extends Controller
     public function roles(Request $request): JsonResponse
     {
         return $this->forTenant($request, function (): JsonResponse {
-            $roles = Role::query()->latest()->get();
+            $roles = Role::query()->latest()->paginate(per_page: 20)->withQueryString();
+            $totalRoles = Role::query()->count();
 
             return response()->json([
                 'metrics' => [
-                    $this->metric('Configured roles', (string) $roles->count(), 'Access profiles', 'ri-shield-user-line'),
+                    $this->metric('Configured roles', (string) $totalRoles, 'Access profiles', 'ri-shield-user-line'),
                     $this->metric('Segregation conflicts', '0', 'No conflicts detected', 'ri-shield-check-line', 'success'),
                 ],
                 'records' => $roles->map(fn (Role $role): array => [
@@ -487,13 +547,13 @@ final class FinanceDataController extends Controller
      */
     private function forTenant(Request $request, callable $callback): mixed
     {
-        $tenantId = $request->user()?->tenant_id
-            ?? Tenant::query()->where('slug', 'demo')->value('id')
-            ?? Tenant::query()->value('id');
+        $tenantId = $request->user()?->tenant_id;
 
-        if ($tenantId !== null) {
-            TenantContext::set((int) $tenantId);
+        if ($tenantId === null) {
+            abort(401, 'Authentication required.');
         }
+
+        TenantContext::set((int) $tenantId);
 
         try {
             return $callback();

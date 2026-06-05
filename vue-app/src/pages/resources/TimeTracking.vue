@@ -1,24 +1,29 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { resourcesService } from '@/services/resourcesService'
 
-const timeEntries = ref([
-  { id: 1, task: 'Frontend Development', project: 'Website Redesign', user: 'John Doe', date: '2024-12-03', hours: 6 },
-  { id: 2, task: 'API Integration', project: 'Mobile App', user: 'Jane Smith', date: '2024-12-03', hours: 8 },
-  { id: 3, task: 'Design Review', project: 'Website Redesign', user: 'Mike Johnson', date: '2024-12-03', hours: 4 },
-  { id: 4, task: 'Bug Fixing', project: 'CRM Integration', user: 'Sarah Wilson', date: '2024-12-02', hours: 5 },
-  { id: 5, task: 'Database Setup', project: 'Data Migration', user: 'David Brown', date: '2024-12-02', hours: 7 }
-])
+const timeEntries = ref([])
+const weeklyTotal = ref(0)
+const monthlyTotal = ref(0)
 
-const weeklyTotal = ref(30)
-const monthlyTotal = ref(156)
+onMounted(async () => {
+  try {
+    const data = await resourcesService.timeEntries()
+    timeEntries.value = data.records || data
+    weeklyTotal.value = data.weekly_total || 0
+    monthlyTotal.value = data.monthly_total || 0
+  } catch (e) {
+    console.error('Failed to load time entries:', e)
+  }
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="Time Tracking" subtitle="Track time spent on projects and tasks">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Log time modal not implemented')">
           <i class="ri-time-line me-1"></i> Log Time
         </button>
       </template>
@@ -94,7 +99,7 @@ const monthlyTotal = ref(156)
             <h5 class="box-title">Recent Time Entries</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Task</th>

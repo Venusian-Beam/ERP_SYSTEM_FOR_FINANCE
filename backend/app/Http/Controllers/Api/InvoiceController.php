@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerInvoice;
 use App\Models\Customer;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -27,13 +30,14 @@ class InvoiceController extends Controller
             'status' => 'required|string',
         ]);
 
-        $validated['tenant_id'] = 1;
+        $tenantId = TenantContext::requireId();
+        $validated['tenant_id'] = $tenantId;
         $validated['paid_amount'] = 0;
         $validated['is_finalized'] = false;
 
         // Ensure customer exists or create a dummy one for the demo
         if (!Customer::find($validated['customer_id'])) {
-            $customer = Customer::create(['tenant_id' => 1, 'name' => 'Demo Customer ' . rand(1,100)]);
+            $customer = Customer::create(['tenant_id' => $tenantId, 'name' => 'Demo Customer ' . rand(1,100)]);
             $validated['customer_id'] = $customer->id;
         }
 

@@ -1,21 +1,25 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { resourcesService } from '@/services/resourcesService'
 
-const milestones = ref([
-  { id: 1, name: 'Project Kickoff', date: '2024-10-01', status: 'completed', project: 'Website Redesign' },
-  { id: 2, name: 'Design Phase Complete', date: '2024-10-30', status: 'completed', project: 'Website Redesign' },
-  { id: 3, name: 'MVP Release', date: '2024-11-30', status: 'in-progress', project: 'Mobile App' },
-  { id: 4, name: 'Beta Testing', date: '2024-12-15', status: 'upcoming', project: 'Website Redesign' },
-  { id: 5, name: 'Production Launch', date: '2024-12-31', status: 'upcoming', project: 'Website Redesign' }
-])
+const milestones = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await resourcesService.milestones()
+    milestones.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load milestones:', e)
+  }
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="Milestones" subtitle="Track project milestones and deliverables">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Add Milestone modal not implemented')">
           <i class="ri-add-line me-1"></i> Add Milestone
         </button>
       </template>

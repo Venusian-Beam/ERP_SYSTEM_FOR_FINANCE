@@ -47,9 +47,9 @@ final class ConversationalGatewayController extends Controller
             }
 
             // 2. Resolve the JSON intent securely against the database
-            $result = $this->resolver->resolve($parsedQuery);
+            $result = $this->resolver->resolve($parsedQuery, $message);
 
-            return response($result, 200)->header('Content-Type', 'text/plain');
+            return response($result['reply'], 200)->header('Content-Type', 'text/plain');
 
         } finally {
             TenantContext::clear();

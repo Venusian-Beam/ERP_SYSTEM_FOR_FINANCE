@@ -61,58 +61,27 @@ final class ReportsController extends Controller
     {
         $asOf = $request->input('as_of', now()->toDateString());
 
-        // Assets: Sum all debit-normal accounts (assets)
-        $assets = JournalLine::query()
+        $ledgerLines = JournalLine::query()
             ->join('financial_accounts', 'journal_lines.financial_account_id', '=', 'financial_accounts.id')
             ->join('journal_entries', 'journal_lines.journal_entry_id', '=', 'journal_entries.id')
-            ->where('financial_accounts.type', 'asset')
+            ->whereIn('financial_accounts.type', ['asset', 'liability', 'equity'])
             ->where('journal_entries.status', 'posted')
             ->where('journal_entries.posted_at', '<=', $asOf)
             ->select(
+                'financial_accounts.type',
                 'financial_accounts.code',
                 'financial_accounts.name',
-                DB::raw('SUM(journal_lines.debit) - SUM(journal_lines.credit) as balance')
+                DB::raw('CASE WHEN financial_accounts.type = \'asset\' THEN SUM(journal_lines.debit) - SUM(journal_lines.credit) ELSE SUM(journal_lines.credit) - SUM(journal_lines.debit) END as balance')
             )
-            ->groupBy('financial_accounts.id', 'financial_accounts.code', 'financial_accounts.name')
-            ->orderBy('financial_accounts.code')
-            ->get();
-
-        // Liabilities: Sum all credit-normal liability accounts
-        $liabilities = JournalLine::query()
-            ->join('financial_accounts', 'journal_lines.financial_account_id', '=', 'financial_accounts.id')
-            ->join('journal_entries', 'journal_lines.journal_entry_id', '=', 'journal_entries.id')
-            ->where('financial_accounts.type', 'liability')
-            ->where('journal_entries.status', 'posted')
-            ->where('journal_entries.posted_at', '<=', $asOf)
-            ->select(
-                'financial_accounts.code',
-                'financial_accounts.name',
-                DB::raw('SUM(journal_lines.credit) - SUM(journal_lines.debit) as balance')
-            )
-            ->groupBy('financial_accounts.id', 'financial_accounts.code', 'financial_accounts.name')
-            ->orderBy('financial_accounts.code')
-            ->get();
-
-        // Equity accounts
-        $equity = JournalLine::query()
-            ->join('financial_accounts', 'journal_lines.financial_account_id', '=', 'financial_accounts.id')
-            ->join('journal_entries', 'journal_lines.journal_entry_id', '=', 'journal_entries.id')
-            ->where('financial_accounts.type', 'equity')
-            ->where('journal_entries.status', 'posted')
-            ->where('journal_entries.posted_at', '<=', $asOf)
-            ->select(
-                'financial_accounts.code',
-                'financial_accounts.name',
-                DB::raw('SUM(journal_lines.credit) - SUM(journal_lines.debit) as balance')
-            )
-            ->groupBy('financial_accounts.id', 'financial_accounts.code', 'financial_accounts.name')
+            ->groupBy('financial_accounts.id', 'financial_accounts.type', 'financial_accounts.code', 'financial_accounts.name')
+            ->orderBy('financial_accounts.type')
             ->orderBy('financial_accounts.code')
             ->get();
 
         return Inertia::render('reports/BalanceSheet', [
-            'assets'      => $assets,
-            'liabilities' => $liabilities,
-            'equity'      => $equity,
+            'assets'      => $ledgerLines->where('type', 'asset')->values(),
+            'liabilities' => $ledgerLines->where('type', 'liability')->values(),
+            'equity'      => $ledgerLines->where('type', 'equity')->values(),
             'asOf'        => $asOf,
         ]);
     }

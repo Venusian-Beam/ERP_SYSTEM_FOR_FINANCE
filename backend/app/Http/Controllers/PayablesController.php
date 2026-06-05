@@ -78,12 +78,12 @@ final class PayablesController extends Controller
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
             'filters'   => $request->only(['status', 'supplier_id', 'due_from', 'due_to']),
             'summary'   => [
-                'total_pending' => SupplierInvoice::query()->where('status', 'pending_approval')->sum('amount'),
-                'total_overdue' => SupplierInvoice::query()
+                'total_pending' => (float) SupplierInvoice::query()->where('status', 'pending_approval')->sum('amount'),
+                'total_overdue' => (float) SupplierInvoice::query()
                     ->whereIn('status', ['pending_approval', 'approved'])
                     ->where('due_date', '<', now()->toDateString())
                     ->sum('amount'),
-                'total_approved' => SupplierInvoice::query()->where('status', 'approved')->sum('amount'),
+                'total_approved' => (float) SupplierInvoice::query()->where('status', 'approved')->sum('amount'),
             ],
         ]);
     }
@@ -134,7 +134,7 @@ final class PayablesController extends Controller
     public function payments(Request $request): Response
     {
         $payments = Payment::query()
-            ->with(['customerInvoice.customer:id,name'])
+            ->with(['invoice.customer:id,name'])
             ->latest('paid_at')
             ->paginate(20)
             ->withQueryString();

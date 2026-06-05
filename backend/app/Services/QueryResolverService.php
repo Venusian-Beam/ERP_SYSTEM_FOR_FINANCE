@@ -115,8 +115,8 @@ final class QueryResolverService
         $overdue = (float) CustomerInvoice::query()
             ->whereDate('due_date', '<', now()->toDateString())
             ->whereNotIn('status', ['paid'])
-            ->get()
-            ->sum(fn (CustomerInvoice $invoice): float => (float) $invoice->amount - (float) $invoice->paid_amount);
+            ->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as total_overdue')
+            ->value('total_overdue');
         $latest = (clone $query)->orderByDesc('due_date')->take(5)->get();
 
         $lines = $latest->map(fn (CustomerInvoice $invoice): string =>
@@ -180,7 +180,7 @@ final class QueryResolverService
             ->get();
         $count = Customer::query()->count();
         $active = Customer::query()->where('status', 'active')->count();
-        $ar = (float) CustomerInvoice::query()->get()->sum(fn (CustomerInvoice $invoice): float => (float) $invoice->amount - (float) $invoice->paid_amount);
+        $ar = (float) CustomerInvoice::query()->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as total_ar')->value('total_ar');
 
         $lines = $customers->map(function (Customer $customer): string {
             $outstanding = (float) ($customer->invoice_total ?? 0) - (float) ($customer->paid_total ?? 0);
@@ -273,7 +273,7 @@ final class QueryResolverService
 
     private function overviewAnswer(array $payload): array
     {
-        $ar = (float) CustomerInvoice::query()->get()->sum(fn (CustomerInvoice $invoice): float => (float) $invoice->amount - (float) $invoice->paid_amount);
+        $ar = (float) CustomerInvoice::query()->selectRaw('COALESCE(SUM(amount - paid_amount), 0) as total_ar')->value('total_ar');
         $ap = (float) SupplierInvoice::query()->whereNotIn('status', ['paid', 'rejected'])->sum('amount');
         $cash = (float) BankAccount::query()->where('status', 'active')->sum('current_balance');
         $customers = Customer::query()->count();

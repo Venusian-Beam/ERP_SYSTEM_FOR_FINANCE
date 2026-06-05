@@ -1,5 +1,26 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import apiClient from '@/utils/apiClient'
 import SettingsWorkspace from '@/components/finance/SettingsWorkspace.vue'
-const sections=[{title:'Appearance',description:'Personalize the finance workspace experience',icon:'ri-palette-line',fields:[{label:'Interface Theme',value:'System default',type:'select'},{label:'Density',value:'Comfortable',type:'select'},{label:'Show financial notices',value:'Display important finance notices across pages',type:'toggle',enabled:true,wide:true}]},{title:'Notifications',description:'Choose how and when important financial activity reaches you',icon:'ri-notification-3-line',fields:[{label:'Email notifications',value:'Approvals, exceptions, and scheduled reports',type:'toggle',enabled:true,wide:true},{label:'Slack notifications',value:'Payment runs and reconciliation exceptions',type:'toggle',enabled:true,wide:true},{label:'WhatsApp notifications',value:'Critical cash and fraud alerts only',type:'toggle',enabled:false,wide:true}]},{title:'Dashboard Defaults',description:'Control the executive overview shown after sign in',icon:'ri-layout-grid-line',fields:[{label:'Default Date Range',value:'Year to date',type:'select'},{label:'Primary Cash Account',value:'Operating · 1842',type:'select'}]}]
+
+const sections = ref([])
+
+onMounted(async () => {
+  try {
+    const { data } = await apiClient.get('/settings/preferences')
+    sections.value = data.sections || data.records || data
+  } catch (e) {
+    console.error('Failed to load preferences:', e)
+  }
+})
+
+const handleSave = async () => {
+  try {
+    await apiClient.put('/settings/preferences', { sections: sections.value })
+    console.log('Preferences saved')
+  } catch (e) {
+    console.error('Failed to save preferences:', e)
+  }
+}
 </script>
-<template><SettingsWorkspace title="Preferences" subtitle="Personalize themes, notifications, and dashboard defaults" :sections="sections" /></template>
+<template><SettingsWorkspace title="Preferences" subtitle="Personalize themes, notifications, and dashboard defaults" :sections="sections" @save="handleSave" /></template>

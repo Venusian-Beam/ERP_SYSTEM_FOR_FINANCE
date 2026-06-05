@@ -1,7 +1,41 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import FinanceDetailWorkspace from '@/components/finance/FinanceDetailWorkspace.vue'
-const details=[{label:'Primary Contact',value:'ap@northstar.com'},{label:'Payment Terms',value:'Net 30'},{label:'Credit Limit',value:'GHC 150,000.00'},{label:'Lifetime Value',value:'GHC 1,284,600.00'}]
-const lines=[{description:'INV-2084',note:'Enterprise support services',account:'Accounts Receivable · 1100',qty:'1',rate:'GHC 48,200.00',amount:'GHC 48,200.00'},{description:'INV-2042',note:'Paid May 14, 2026',account:'Accounts Receivable · 1100',qty:'1',rate:'GHC 36,800.00',amount:'GHC 36,800.00'}]
-const timeline=[{title:'Invoice INV-2084 sent',text:'Delivered to ap@northstar.com',time:'Jun 2 · 10:15',icon:'ri-mail-send-line'},{title:'Payment received',text:'Receipt RCT-260514-03 matched automatically',time:'May 14 · 14:28'},{title:'Credit limit reviewed',text:'Limit increased from GHC 100,000',time:'Apr 30 · 09:10',icon:'ri-bank-card-line'}]
+import { receivablesService } from '@/services/receivablesService'
+
+const route = useRoute()
+const details = ref([])
+const lines = ref([])
+const timeline = ref([])
+const title = ref('')
+const subtitle = ref('')
+const status = ref('')
+const amount = ref('')
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await receivablesService.customer(route.params.id)
+    const cust = data.record || data
+    title.value = cust.name
+    subtitle.value = 'Customer profile and receivables history'
+    status.value = cust.status || 'Active'
+    amount.value = cust.balance ? `GHC ${Number(cust.balance).toLocaleString()}` : 'GHC 0.00'
+    details.value = [
+      { label: 'Primary Contact', value: cust.email || '—' },
+      { label: 'Payment Terms', value: cust.terms || 'Net 30' },
+      { label: 'Credit Limit', value: cust.credit_limit ? `GHC ${Number(cust.credit_limit).toLocaleString()}` : '—' },
+      { label: 'Lifetime Value', value: cust.ltv ? `GHC ${Number(cust.ltv).toLocaleString()}` : '—' },
+    ]
+  } catch (e) {
+    console.error('Failed to load customer:', e)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
-<template><FinanceDetailWorkspace title="Northstar Retail Group" subtitle="Customer profile and receivables history" status="Active" amount-label="Open Balance" amount="GHC 48,200.00" :details="details" :lines="lines" :timeline="timeline" primary-action="Create Invoice" /></template>
+<template>
+  <div v-if="loading" class="flex justify-center items-center h-64"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+  <FinanceDetailWorkspace v-else :title="title" :subtitle="subtitle" :status="status" amount-label="Open Balance" :amount="amount" :details="details" :lines="lines" :timeline="timeline" primary-action="Create Invoice" @primary-action="console.log('Create Invoice not implemented')" @download-pdf="console.log('Download PDF not implemented')" />
+</template>

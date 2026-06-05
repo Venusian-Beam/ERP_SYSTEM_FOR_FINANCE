@@ -1,21 +1,25 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { resourcesService } from '@/services/resourcesService'
 
-const teamMembers = ref([
-  { id: 1, name: 'John Doe', role: 'Frontend Developer', email: 'john@example.com', availability: 100, projects: 3 },
-  { id: 2, name: 'Jane Smith', role: 'Backend Developer', email: 'jane@example.com', availability: 80, projects: 2 },
-  { id: 3, name: 'Mike Johnson', role: 'UI/UX Designer', email: 'mike@example.com', availability: 100, projects: 4 },
-  { id: 4, name: 'Sarah Wilson', role: 'QA Engineer', email: 'sarah@example.com', availability: 60, projects: 2 },
-  { id: 5, name: 'David Brown', role: 'DevOps Engineer', email: 'david@example.com', availability: 50, projects: 5 }
-])
+const teamMembers = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await resourcesService.members()
+    teamMembers.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load team members:', e)
+  }
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="Team Resources" subtitle="Manage team members and allocations">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('Add Member modal not implemented')">
           <i class="ri-user-add-line me-1"></i> Add Member
         </button>
       </template>
@@ -75,7 +79,7 @@ const teamMembers = ref([
             <h5 class="box-title">Team Members</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Member</th>

@@ -20,6 +20,6 @@ final class JournalEntry extends Model
 
     public function lines(): HasMany
     {
-        return $this->hasMany(JournalLine::class)->with('account');
+        return $this->hasMany(JournalLine::class);
     }
 }

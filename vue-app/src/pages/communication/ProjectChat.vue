@@ -2,9 +2,7 @@
 import { ref } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 
-const messages = ref([
-  { id: 1, text: 'Hello! I am your AI assistant for Project Tracker. How can I help you today?', sender: 'ai', timestamp: 'Just now' }
-])
+const messages = ref([])
 
 const input = ref('')
 const processing = ref(false)
@@ -91,7 +89,7 @@ const handleKeyUp = (e) => {
 <div>
   <PageHeader title="AI Assistant" subtitle="Chat with your Project Tracker AI">
     <template #actions>
-      <button class="ti-btn ti-btn-outline ti-btn-sm" @click="messages = [{ id: 1, text: 'Hello! I am your AI assistant for Project Tracker. How can I help you today?', sender: 'ai', timestamp: 'Just now' }]">
+      <button class="ti-btn ti-btn-outline ti-btn-sm" @click="messages = []">
         <i class="ri-restart-line me-1"></i> Clear Chat
       </button>
     </template>

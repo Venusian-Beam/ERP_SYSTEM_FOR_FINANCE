@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
+use App\Support\TenantContext;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -25,8 +28,7 @@ class SupplierController extends Controller
             'status' => 'nullable|string|in:active,inactive'
         ]);
 
-        // Default tenant_id to 1 for the demo if not using full auth
-        $validated['tenant_id'] = 1; 
+        $validated['tenant_id'] = TenantContext::requireId();
 
         $supplier = Supplier::create($validated);
 

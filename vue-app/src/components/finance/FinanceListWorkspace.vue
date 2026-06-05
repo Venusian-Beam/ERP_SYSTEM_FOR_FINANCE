@@ -15,9 +15,14 @@ const props = defineProps({
   filters: { type: Array, default: () => [] },
   detailBase: String,
   insight: Object,
+  currentPage: { type: Number, default: 1 },
+  totalPages: { type: Number, default: 0 },
+  totalRecords: { type: Number, default: 0 },
+  loading: { type: Boolean, default: false },
+  currency: { type: String, default: 'GHC' },
 })
 
-const emit = defineEmits(['primary-action'])
+const emit = defineEmits(['primary-action', 'next-page', 'prev-page', 'go-to-page'])
 
 const router = useRouter()
 const search = ref('')
@@ -59,7 +64,7 @@ const cardPalettes = [
 ]
 
 const isMoney = (column) => column.type === 'money'
-const money = (value) => 'GHC ' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
+const money = (value) => props.currency + ' ' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
 
 const statusClass = (value) => {
   const status = String(value).toLowerCase()
@@ -209,11 +214,14 @@ const maxOf = (arr) => Math.max(...arr)
       </div>
 
       <footer class="table-footer">
-        <span>Showing {{ filteredRecords.length }} of {{ records.length }} records</span>
+        <span>{{ loading ? 'Loading...' : `Showing ${filteredRecords.length} of ${totalRecords || records.length} records` }}</span>
         <div>
-          <button disabled><i class="ri-arrow-left-s-line"></i></button>
-          <button class="current">1</button>
-          <button disabled><i class="ri-arrow-right-s-line"></i></button>
+          <button :disabled="currentPage <= 1" @click="$emit('prev-page')"><i class="ri-arrow-left-s-line"></i></button>
+          <template v-for="p in Math.min(totalPages || 1, 5)" :key="p">
+            <button v-if="totalPages > 0" :class="{ current: p === currentPage }" @click="$emit('go-to-page', p)">{{ p }}</button>
+          </template>
+          <button v-if="totalPages > 5" disabled>...</button>
+          <button :disabled="currentPage >= totalPages" @click="$emit('next-page')"><i class="ri-arrow-right-s-line"></i></button>
         </div>
       </footer>
     </div>

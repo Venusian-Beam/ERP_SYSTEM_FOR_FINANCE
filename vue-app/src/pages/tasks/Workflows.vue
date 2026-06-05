@@ -3,21 +3,7 @@ import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import PageHeader from '@/components/ui/PageHeader.vue'
 
-// Deterministic Hierarchy CTE simulation
-const hierarchies = ref([
-  { 
-    id: 1, 
-    name: 'Primary Enterprise Graph (CTE Render)', 
-    nodes: ['Departments', 'Projects', 'Budgets', 'Suppliers', 'Assets'],
-    strict_mode: true
-  },
-  { 
-    id: 2, 
-    name: 'Compliance Audit Trail', 
-    nodes: ['Ingestion', 'Validation Gate', 'Manager Approval', 'Ledger Post'],
-    strict_mode: true
-  }
-])
+const hierarchies = ref([])
 
 const graphForm = useForm({
   focus_node: '',

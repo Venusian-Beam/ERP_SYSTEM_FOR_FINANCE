@@ -31,7 +31,9 @@ final class ResolveTenant
         abort_if($userTenantId !== null && (int) $userTenantId !== (int) $tenant->id, 403, 'Authenticated user does not belong to this tenant.');
 
         TenantContext::set((int) $tenant->id);
-        $request->session()->put('active_tenant_id', (int) $tenant->id);
+        if ($request->hasSession()) {
+            $request->session()->put('active_tenant_id', (int) $tenant->id);
+        }
 
         try {
             return $next($request);

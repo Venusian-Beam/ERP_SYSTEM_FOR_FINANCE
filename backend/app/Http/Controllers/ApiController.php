@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Services\LlmCoPilotService;
 use App\Services\QueryResolverService;
-use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -28,10 +27,14 @@ final class ApiController extends Controller
             return response()->json(['error' => 'Empty query'], 400);
         }
 
-        $tenant = Tenant::query()->where('slug', 'demo')->first();
-        if ($tenant) {
-            TenantContext::set((int) $tenant->id);
+        $user = $request->user();
+        $tenantId = $user?->tenant_id;
+
+        if ($tenantId === null) {
+            return response()->json(['error' => 'Authentication required.'], 401);
         }
+
+        TenantContext::set((int) $tenantId);
 
         try {
             $parsed = $this->llm->parseQuery($query) ?? [];

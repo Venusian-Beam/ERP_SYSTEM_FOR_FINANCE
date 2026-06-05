@@ -4,7 +4,7 @@ import { formatCurrency } from '@/utils/formatters'
 
 const props = defineProps({
   amount: { type: Number, default: 0 },
-  currency: { type: String, default: 'USD' }
+  currency: { type: String, default: 'GHS' }
 })
 
 const formatted = computed(() => formatCurrency(props.amount, props.currency))

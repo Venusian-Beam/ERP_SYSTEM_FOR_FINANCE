@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import apiClient from '@/utils/apiClient'
+import { payablesService } from '@/services/payablesService'
 import { exportToCSV } from '@/utils/exportUtils'
 
 const router = useRouter()
@@ -18,8 +18,8 @@ const modalForm = ref({ name: '', email: '', phone: '', status: 'active' })
 const fetchVendors = async () => {
   loading.value = true
   try {
-    const { data } = await apiClient.get('/suppliers')
-    vendors.value = data
+    const data = await payablesService.vendors()
+    vendors.value = data.records || data.data || data
   } catch (e) {
     console.error("Failed to load vendors")
   } finally {
@@ -51,8 +51,8 @@ const handleExport = () => {
 
 const saveVendor = async () => {
   try {
-    const { data } = await apiClient.post('/suppliers', modalForm.value)
-    vendors.value.unshift(data)
+    const data = await payablesService.createVendor(modalForm.value)
+    vendors.value.unshift(data.record || data)
     showModal.value = false
     modalForm.value = { name: '', email: '', phone: '', status: 'active' }
   } catch (error) {
@@ -63,7 +63,7 @@ const saveVendor = async () => {
 const deleteVendor = async (id) => {
   if(!confirm("Are you sure you want to delete this vendor?")) return;
   try {
-    await apiClient.delete(`/suppliers/${id}`)
+    await payablesService.deleteVendor(id)
     vendors.value = vendors.value.filter(v => v.id !== id)
   } catch (e) {
     alert("Error deleting vendor")
@@ -94,7 +94,7 @@ const deleteVendor = async (id) => {
         </div>
 
         <div class="table-responsive">
-          <table class="ti-custom-table">
+          <table class="table-standard">
             <thead>
               <tr>
                 <th>Vendor Name</th>
@@ -206,26 +206,6 @@ const deleteVendor = async (id) => {
 }
 .form-select:focus {
   border-color: var(--primary);
-}
-
-.ti-custom-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.ti-custom-table th {
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  border-bottom: 2px solid var(--border-strong);
-  background: var(--bg-app);
-}
-
-.ti-custom-table td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-default);
-  vertical-align: middle;
 }
 
 .btn-icon {

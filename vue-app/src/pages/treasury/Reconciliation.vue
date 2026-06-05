@@ -1,7 +1,23 @@
 <script setup>
 import FinanceListWorkspace from '@/components/finance/FinanceListWorkspace.vue'
-const metrics=[{label:'Reconciled this month',value:'GHC 1.28M',trend:'96.8% complete',icon:'ri-check-double-line',tone:'success'},{label:'Suggested matches',value:'18',trend:'Confidence above 90%',icon:'ri-link-m'},{label:'Unmatched items',value:'23',trend:'GHC 28,450 total',icon:'ri-question-line',tone:'warning'},{label:'Exceptions',value:'4',trend:'Require finance review',icon:'ri-error-warning-line',tone:'danger'}]
-const columns=[{key:'date',label:'Bank Date',primary:true},{key:'description',label:'Bank Description'},{key:'suggestion',label:'Suggested Ledger Match'},{key:'confidence',label:'Confidence'},{key:'amount',label:'Amount',type:'money'},{key:'status',label:'Status',type:'status'}]
-const records=[{id:1,date:'Jun 03, 2026',description:'ACH CREDIT NORTHSTAR',suggestion:'RCT-260603-08',confidence:'99%',amount:48200,status:'Matched'},{id:2,date:'Jun 02, 2026',description:'WIRE OUT ACME CLOUD',suggestion:'PAY-260602-04',confidence:'97%',amount:-8900,status:'Matched'},{id:3,date:'Jun 01, 2026',description:'WIRE CREDIT 0621',suggestion:'Atlas Construction',confidence:'94%',amount:12480,status:'Review'},{id:4,date:'May 31, 2026',description:'BANK SERVICE FEE',suggestion:'Bank Charges · 6210',confidence:'88%',amount:-125,status:'Pending'}]
+import { useApiPayload } from '@/composables/useApiPayload'
+import { treasuryService } from '@/services/treasuryService'
+
+const { metrics, records, currentPage, totalPages, totalRecords, loading, nextPage, prevPage, goToPage } = useApiPayload(treasuryService.reconciliation)
+const columns = [
+  { key: 'date', label: 'Bank Date', primary: true },
+  { key: 'description', label: 'Bank Description' },
+  { key: 'suggestion', label: 'Suggested Ledger Match' },
+  { key: 'confidence', label: 'Confidence' },
+  { key: 'amount', label: 'Amount', type: 'money' },
+  { key: 'status', label: 'Status', type: 'status' },
+]
+
+const handlePrimaryAction = () => {
+  console.log('Reconcile Selected — flow not yet implemented')
+}
 </script>
-<template><FinanceListWorkspace title="Reconciliation" subtitle="Match bank feed activity to ledger transactions" action-label="Reconcile Selected" action-icon="ri-check-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Matched','Review','Pending']" :insight="{title:'18 high-confidence matches are ready',text:'Approving the suggested matches will bring the Operating account to 99.2% reconciled.'}" /></template>
+
+<template>
+  <FinanceListWorkspace title="Reconciliation" subtitle="Match bank feed activity to ledger transactions" action-label="Reconcile Selected" action-icon="ri-check-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Matched','Review','Pending']" :insight="{title:'Reconciliation is backend-driven',text:'Suggested matches and pending items are derived from bank transactions and journal links.'}" :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading" @primary-action="handlePrimaryAction" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage" />
+</template>

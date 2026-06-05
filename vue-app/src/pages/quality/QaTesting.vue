@@ -1,20 +1,19 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { qualityService } from '@/services/qualityService'
 
-const testCases = ref([
-  { id: 1, name: 'Login functionality', type: 'functional', status: 'passed', priority: 'high', lastRun: '2024-12-03' },
-  { id: 2, name: 'Form validation', type: 'functional', status: 'passed', priority: 'medium', lastRun: '2024-12-03' },
-  { id: 3, name: 'API response times', type: 'performance', status: 'failed', priority: 'high', lastRun: '2024-12-02' },
-  { id: 4, name: 'Mobile responsiveness', type: 'ui', status: 'passed', priority: 'medium', lastRun: '2024-12-02' },
-  { id: 5, name: 'Cross-browser compatibility', type: 'ui', status: 'pending', priority: 'low', lastRun: '-' }
-])
+const testCases = ref([])
+const stats = ref({ total: 0, passed: 0, failed: 0, pending: 0 })
 
-const stats = ref({
-  total: 45,
-  passed: 38,
-  failed: 4,
-  pending: 3
+onMounted(async () => {
+  try {
+    const data = await qualityService.testCases()
+    testCases.value = data.records || data
+    stats.value = data.stats || { total: 0, passed: 0, failed: 0, pending: 0 }
+  } catch (e) {
+    console.error('Failed to load test cases:', e)
+  }
 })
 </script>
 
@@ -22,10 +21,10 @@ const stats = ref({
   <div>
     <PageHeader title="QA & Testing" subtitle="Manage test cases and track quality metrics">
       <template #actions>
-        <button class="ti-btn ti-btn-light">
+        <button class="ti-btn ti-btn-light" @click="console.log('Run All Tests not implemented')">
           <i class="ri-play-line me-1"></i> Run All Tests
         </button>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('New Test Case modal not implemented')">
           <i class="ri-add-line me-1"></i> New Test Case
         </button>
       </template>
@@ -77,7 +76,7 @@ const stats = ref({
             <h5 class="box-title">Test Cases</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Test Name</th>

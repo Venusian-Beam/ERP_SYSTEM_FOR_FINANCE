@@ -30,10 +30,15 @@ const form = ref({
   phaseCount: ''
 })
 
-const handleSubmit = () => {
-  console.log('Creating project:', form.value)
-  // Add API call here
-  router.push('/projects')
+import { projectsService } from '@/services/projectsService'
+
+const handleSubmit = async () => {
+  try {
+    await projectsService.createProject(form.value)
+    router.push('/projects')
+  } catch (e) {
+    console.error('Failed to create project:', e)
+  }
 }
 
 const handleCancel = () => {

@@ -1,6 +1,6 @@
 <template>
   <button 
-    class="fixed bottom-[20px] right-[20px] w-12 h-12 bg-hotpink text-white rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-hotpink/90 transition-colors"
+    class="fixed bottom-[20px] right-[20px] w-12 h-12 bg-gradient-to-b from-hotpink to-seablue text-white rounded-full flex items-center justify-center shadow-lg z-50 hover:from-seablue hover:to-hotpink transition-colors"
     @click="togglePopup"
     aria-label="Toggle AI Chat"
   >
@@ -17,11 +17,21 @@ const togglePopup = inject('togglePopup')
 <style scoped>
 :root {
   --hotpink: #ff69b4;
+  --seablue: #60a5fa;
 }
-.bg-hotpink {
-  background-color: var(--hotpink);
+.bg-gradient-to-b {
+  background-image: linear-gradient(to bottom, var(--hotpink), var(--seablue));
 }
-.hover\:bg-hotpink\/90:hover {
-  background-color: rgba(255, 105, 180, 0.9);
+.from-hotpink {
+  background-image: linear-gradient(to bottom, var(--hotpink), var(--seablue));
+}
+.to-seablue {
+  background-image: linear-gradient(to bottom, var(--hotpink), var(--seablue));
+}
+.hover\:from-seablue {
+  background-image: linear-gradient(to bottom, var(--seablue), var(--hotpink));
+}
+.hover\:to-hotpink {
+  background-image: linear-gradient(to bottom, var(--seablue), var(--hotpink));
 }
 </style>

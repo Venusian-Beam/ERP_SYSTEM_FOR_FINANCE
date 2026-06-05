@@ -1,21 +1,25 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { qualityService } from '@/services/qualityService'
 
-const changes = ref([
-  { id: 1, title: 'Add user profile page', type: 'feature', requestor: 'John Smith', status: 'approved', impact: 'medium', date: '2024-12-01' },
-  { id: 2, title: 'Extend deadline by 2 weeks', type: 'schedule', requestor: 'Jane Doe', status: 'pending', impact: 'high', date: '2024-12-02' },
-  { id: 3, title: 'Remove legacy API support', type: 'scope', requestor: 'Mike Johnson', status: 'approved', impact: 'low', date: '2024-11-28' },
-  { id: 4, title: 'Increase budget for testing', type: 'budget', requestor: 'Sarah Wilson', status: 'rejected', impact: 'medium', date: '2024-11-25' },
-  { id: 5, title: 'Add mobile push notifications', type: 'feature', requestor: 'David Brown', status: 'pending', impact: 'high', date: '2024-12-03' }
-])
+const changes = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await qualityService.changeLogs()
+    changes.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load changes:', e)
+  }
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="Change Log" subtitle="Track change requests and approvals">
       <template #actions>
-        <button class="ti-btn ti-btn-primary">
+        <button class="ti-btn ti-btn-primary" @click="console.log('New Change Request modal not implemented')">
           <i class="ri-add-line me-1"></i> New Change Request
         </button>
       </template>
@@ -55,7 +59,7 @@ const changes = ref([
             <h5 class="box-title">Change Requests</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Change Request</th>

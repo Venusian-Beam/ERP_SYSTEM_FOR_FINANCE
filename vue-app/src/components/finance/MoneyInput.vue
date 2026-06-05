@@ -2,7 +2,7 @@
 const model = defineModel({ type: Number, default: 0 })
 
 defineProps({
-  currency: { type: String, default: 'USD' },
+  currency: { type: String, default: 'GHS' },
 })
 </script>
 

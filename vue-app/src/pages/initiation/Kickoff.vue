@@ -1,19 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
+import { initiationService } from '@/services/initiationService'
 
-const kickoffs = ref([
-  { id: 1, project: 'Website Redesign', date: '2024-10-01', attendees: 12, status: 'completed' },
-  { id: 2, project: 'Mobile App Development', date: '2024-10-15', attendees: 8, status: 'completed' },
-  { id: 3, project: 'Data Migration', date: '2024-11-01', attendees: 6, status: 'scheduled' }
-])
+const kickoffs = ref([])
 
-const objectives = ref([
-  { id: 1, text: 'Define project scope and deliverables', completed: true },
-  { id: 2, text: 'Identify key stakeholders and roles', completed: true },
-  { id: 3, text: 'Establish communication channels', completed: false },
-  { id: 4, text: 'Set up project timeline and milestones', completed: false }
-])
+onMounted(async () => {
+  try {
+    const data = await initiationService.kickoffs()
+    kickoffs.value = data.records || data
+  } catch (e) {
+    console.error('Failed to load kickoffs:', e)
+  }
+})
+
+const objectives = ref([])
 
 // Schedule Kick-Off modal state
 const showScheduleModal = ref(false)
@@ -38,20 +39,21 @@ const closeScheduleModal = () => {
   }
 }
 
-const saveKickoff = () => {
+const saveKickoff = async () => {
   if (!newKickoff.value.project.trim() || !newKickoff.value.date) return
-
-  const nextId = kickoffs.value.length ? Math.max(...kickoffs.value.map(k => k.id)) + 1 : 1
-
-  kickoffs.value.push({
-    id: nextId,
-    project: newKickoff.value.project.trim(),
-    date: newKickoff.value.date,
-    attendees: Number(newKickoff.value.attendees) || 0,
-    status: newKickoff.value.status
-  })
-
-  closeScheduleModal()
+  try {
+    await initiationService.createKickoff({
+      project: newKickoff.value.project.trim(),
+      date: newKickoff.value.date,
+      attendees: Number(newKickoff.value.attendees) || 0,
+      status: newKickoff.value.status
+    })
+    const data = await initiationService.kickoffs()
+    kickoffs.value = data.records || data
+    closeScheduleModal()
+  } catch (e) {
+    console.error('Failed to save kickoff:', e)
+  }
 }
 </script>
 
@@ -72,7 +74,7 @@ const saveKickoff = () => {
             <h5 class="box-title">Kick-Off Meetings</h5>
           </div>
           <div class="box-body p-0">
-            <table class="table table-hover whitespace-nowrap">
+            <table class="table table-hover whitespace-nowrap table-standard">
               <thead>
                 <tr>
                   <th>Project</th>

@@ -1,23 +1,26 @@
 <script setup>
 import { ref, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import axios from 'axios'
 import ApexCharts from 'apexcharts'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import AiAssistant from '@/components/finance/AiAssistant.vue'
+import api from '@/services/api'
 
 let charts = []
 const dashboardData = ref({
   revenue: 0,
   expenses: 0,
+  cash: 0,
+  receivables: 0,
   active_invoices: [],
-  pending_bills: []
+  pending_bills: [],
+  revenue_trend: [0,0,0,0,0,0,0,0,0,0,0,0],
+  expense_trend: [0,0,0,0,0,0,0,0,0,0,0,0],
 })
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/dashboard')
-    dashboardData.value = response.data
+    dashboardData.value = await api.get('/dashboard')
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
   } finally {
@@ -78,8 +81,8 @@ const initializeCharts = () => {
   if (financeStatsElement) {
     const chart = new ApexCharts(financeStatsElement, {
       series: [
-        { name: 'Expenses', type: 'area', data: [85, 92, 88, 105, 112, 118, 125, 130, 135, 142, 148, 155] },
-        { name: 'Revenue', type: 'bar', data: [120, 140, 135, 165, 178, 195, 210, 225, 240, 258, 275, 290] },
+        { name: 'Expenses', type: 'area', data: dashboardData.value.expense_trend },
+        { name: 'Revenue', type: 'bar', data: dashboardData.value.revenue_trend },
       ],
       chart: {
         type: 'area',
@@ -105,7 +108,7 @@ const initializeCharts = () => {
         axisTicks: { show: false },
       },
       yaxis: {
-        labels: { formatter: (value) => `$${value}K` },
+        labels: { formatter: (value) => `GHC${value}K` },
       },
       legend: { show: true, position: 'bottom', inverseOrder: true },
       plotOptions: {
@@ -164,10 +167,10 @@ const initializeCharts = () => {
       tooltip: {
         enabled: true,
         theme: 'dark',
-        y: { formatter: (value) => `$${value}K` },
+        y: { formatter: (value) => `GHC${value}K` },
       },
       yaxis: {
-        labels: { formatter: (value) => `$${Number(value || 0).toFixed(0)}K` },
+        labels: { formatter: (value) => `GHC${Number(value || 0).toFixed(0)}K` },
       },
       xaxis: {
         categories: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
@@ -223,7 +226,7 @@ const initializeCharts = () => {
             <div class="flex items-start justify-between gap-4 mb-5">
               <div>
                 <p class="text-textmuted mb-1">Available cash</p>
-                <h3 class="text-2xl font-semibold tabular-nums mb-0">GHC 892K</h3>
+                <h3 class="text-2xl font-semibold tabular-nums mb-0">GHC {{ Math.round(dashboardData.cash || 0).toLocaleString() }}</h3>
               </div>
               <span class="avatar avatar-lg bg-primary/10 text-primary">
                 <i class="ri-bank-line text-2xl"></i>
@@ -232,11 +235,11 @@ const initializeCharts = () => {
             <div class="grid grid-cols-2 gap-3">
               <div class="p-3 rounded-md bg-light">
                 <p class="text-textmuted mb-1 text-xs">Receivables</p>
-                <p class="font-semibold tabular-nums mb-0">GHC 214K</p>
+                <p class="font-semibold tabular-nums mb-0">GHC {{ Math.round(dashboardData.receivables || 0).toLocaleString() }}</p>
               </div>
               <div class="p-3 rounded-md bg-light">
                 <p class="text-textmuted mb-1 text-xs">Payables</p>
-                <p class="font-semibold tabular-nums mb-0">GHC 96K</p>
+                <p class="font-semibold tabular-nums mb-0">GHC {{ Math.round(dashboardData.expenses || 0).toLocaleString() }}</p>
               </div>
               <div class="p-3 rounded-md bg-light">
                 <p class="text-textmuted mb-1 text-xs">Runway</p>
@@ -272,7 +275,7 @@ const initializeCharts = () => {
               <h4 class="text-lg font-bold text-gray-800" v-else>Loading...</h4>
             </div>
             <svg class="w-16 h-8 opacity-80" viewBox="0 0 80 36" preserveAspectRatio="none">
-              <rect v-for="(h,i) in [30,42,38,55,48,62,58,70,65,78]" :key="i" :x="i*8+1" :y="36-(h/78)*34" width="5" :height="(h/78)*34" rx="2" fill="#6366f1"/>
+              <rect v-for="(h,i) in dashboardData.revenue_trend.slice(-10)" :key="i" :x="i*8+1" :y="36-(h/(Math.max(...dashboardData.revenue_trend, 1)))*34" width="5" :height="(h/(Math.max(...dashboardData.revenue_trend, 1)))*34" rx="2" fill="#6366f1"/>
             </svg>
           </div>
         </div>
@@ -294,7 +297,7 @@ const initializeCharts = () => {
               <h4 class="text-lg font-bold text-gray-800" v-else>Loading...</h4>
             </div>
             <svg class="w-16 h-8 opacity-80" viewBox="0 0 80 36" preserveAspectRatio="none">
-              <rect v-for="(h,i) in [25,28,32,30,38,42,40,48,52,55]" :key="i" :x="i*8+1" :y="36-(h/55)*34" width="5" :height="(h/55)*34" rx="2" fill="#ec4899"/>
+              <rect v-for="(h,i) in dashboardData.expense_trend.slice(-10)" :key="i" :x="i*8+1" :y="36-(h/(Math.max(...dashboardData.expense_trend, 1)))*34" width="5" :height="(h/(Math.max(...dashboardData.expense_trend, 1)))*34" rx="2" fill="#ec4899"/>
             </svg>
           </div>
         </div>
@@ -312,7 +315,7 @@ const initializeCharts = () => {
           <div class="flex justify-between items-end">
             <div>
               <p class="text-xs text-gray-500 mb-1 font-medium">Net Profit Margin</p>
-              <h4 class="text-lg font-bold text-gray-800">42.96%</h4>
+              <h4 class="text-lg font-bold text-gray-800">{{ dashboardData.revenue ? (((dashboardData.revenue - dashboardData.expenses) / dashboardData.revenue) * 100).toFixed(2) : '0.00' }}%</h4>
             </div>
             <svg class="w-16 h-8 opacity-80" viewBox="0 0 80 36" preserveAspectRatio="none">
               <rect v-for="(h,i) in [28,32,30,35,38,36,40,39,42,43]" :key="i" :x="i*8+1" :y="36-(h/43)*34" width="5" :height="(h/43)*34" rx="2" fill="#06b6d4"/>
@@ -333,7 +336,7 @@ const initializeCharts = () => {
           <div class="flex justify-between items-end">
             <div>
               <p class="text-xs text-gray-500 mb-1 font-medium">Cash on Hand</p>
-              <h4 class="text-lg font-bold text-gray-800">GHC 892K</h4>
+              <h4 class="text-lg font-bold text-gray-800">GHC {{ Math.round(dashboardData.cash || 0).toLocaleString() }}</h4>
             </div>
             <svg class="w-16 h-8 opacity-80" viewBox="0 0 80 36" preserveAspectRatio="none">
               <rect v-for="(h,i) in [85,88,82,90,87,92,89,86,91,92]" :key="i" :x="i*8+1" :y="36-(h/92)*34" width="5" :height="(h/92)*34" rx="2" fill="#f97316"/>
@@ -465,49 +468,8 @@ const initializeCharts = () => {
             <div class="box-title">Pending Approvals</div>
             <router-link class="ti-btn ti-btn-sm bg-light" to="/payables/bills">View All</router-link>
           </div>
-          <div class="box-body space-y-4">
-            <div class="p-4 rounded-md bg-primary/10 border border-primary/20">
-              <div class="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p class="font-medium mb-1">Invoice #INV-2841</p>
-                  <p class="text-textmuted text-xs mb-0">CFO review required</p>
-                </div>
-                <span class="font-semibold tabular-nums">GHC 48,200</span>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span class="badge leading-none bg-primary/10 text-primary">AR</span>
-                <span class="badge leading-none bg-danger/10 text-danger">High Priority</span>
-                <span class="badge leading-none bg-info/10 text-info">09:15 AM</span>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-md bg-light">
-              <div class="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p class="font-medium mb-1">Vendor bill #BILL-1198</p>
-                  <p class="text-textmuted text-xs mb-0">Operations approval</p>
-                </div>
-                <span class="font-semibold tabular-nums">GHC 12,450</span>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span class="badge leading-none bg-warning/10 text-warning">AP</span>
-                <span class="badge leading-none bg-primarytint1color/10 text-primarytint1color">Today</span>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-md bg-light">
-              <div class="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p class="font-medium mb-1">Payroll batch</p>
-                  <p class="text-textmuted text-xs mb-0">Final sign-off</p>
-                </div>
-                <span class="font-semibold tabular-nums">GHC 86,300</span>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span class="badge leading-none bg-success/10 text-success">Payroll</span>
-                <span class="badge leading-none bg-info/10 text-info">Tomorrow</span>
-              </div>
-            </div>
+          <div class="box-body">
+            <p class="text-textmuted text-center py-4">No pending approvals.</p>
           </div>
         </div>
       </div>

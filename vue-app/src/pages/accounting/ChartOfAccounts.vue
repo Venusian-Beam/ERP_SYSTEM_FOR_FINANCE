@@ -1,11 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
 import FinanceListWorkspace from '@/components/finance/FinanceListWorkspace.vue'
+import { accountingService } from '@/services/accountingService'
+import { useApiPayload } from '@/composables/useApiPayload'
 
-const metrics = ref([])
-const records = ref([])
-const loading = ref(true)
+const { metrics, records, loading, currentPage, totalPages, totalRecords, nextPage, prevPage, goToPage } = useApiPayload(accountingService.accounts)
 
 const columns = [
   { key: 'code', label: 'Account Code', primary: true },
@@ -16,17 +14,9 @@ const columns = [
   { key: 'status', label: 'Status', type: 'status' }
 ]
 
-onMounted(async () => {
-  try {
-    const response = await axios.get('/api/accounting/chart-of-accounts')
-    metrics.value = response.data.metrics
-    records.value = response.data.records
-  } catch (error) {
-    console.error('Failed to fetch chart of accounts:', error)
-  } finally {
-    loading.value = false
-  }
-})
+const handlePrimaryAction = () => {
+  console.log('Add Account — create flow not yet implemented')
+}
 </script>
 
 <template>
@@ -43,5 +33,7 @@ onMounted(async () => {
     :records="records" 
     :filters="['Active', 'Header', 'Current Asset', 'Current Liability']" 
     :insight="{title:'Account structure looks healthy', text:'No duplicate account codes or posting activity against header accounts were detected.'}" 
+    :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading"
+    @primary-action="handlePrimaryAction" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage"
   />
 </template>

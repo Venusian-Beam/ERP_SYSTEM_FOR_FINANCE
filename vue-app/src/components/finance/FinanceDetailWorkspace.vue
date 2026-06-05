@@ -12,14 +12,16 @@ const props = defineProps({
   timeline: { type: Array, default: () => [] },
   primaryAction: { type: String, default: 'Primary Action' },
 })
+
+const emit = defineEmits(['primary-action', 'download-pdf', 'edit-lines'])
 </script>
 
 <template>
   <section class="detail-workspace">
     <PageHeader :title="title" :subtitle="subtitle">
       <template #actions>
-        <button class="secondary"><i class="ri-download-2-line"></i> Download PDF</button>
-        <button class="primary"><i class="ri-check-line"></i> {{ primaryAction }}</button>
+        <button class="secondary" @click="$emit('download-pdf')"><i class="ri-download-2-line"></i> Download PDF</button>
+        <button class="primary" @click="$emit('primary-action')"><i class="ri-check-line"></i> {{ primaryAction }}</button>
       </template>
     </PageHeader>
     <div class="detail-grid">
@@ -31,7 +33,7 @@ const props = defineProps({
           </div>
         </article>
         <article class="card">
-          <header><div><h3>Line Items</h3><p>Financial coding and transaction breakdown</p></div><button><i class="ri-pencil-line"></i> Edit</button></header>
+          <header><div><h3>Line Items</h3><p>Financial coding and transaction breakdown</p></div><button @click="$emit('edit-lines')"><i class="ri-pencil-line"></i> Edit</button></header>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Description</th><th>Account</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>

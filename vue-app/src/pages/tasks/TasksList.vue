@@ -120,7 +120,7 @@ const formatDate = (dateStr) => {
 
       <div class="box-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover whitespace-nowrap">
+          <table class="table-standard">
             <thead>
               <tr>
                 <th>Task</th>

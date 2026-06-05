@@ -9,29 +9,39 @@ const route = useRoute()
 // Mock data based on ID
 const vendorId = route.params.id
 
-const vendor = ref({
-  id: vendorId,
-  name: 'Acme Corp',
-  email: 'billing@acmecorp.com',
-  phone: '+1 (555) 123-4567',
-  address: '123 Innovation Drive, Tech City, CA 94043',
-  category: 'Software',
-  taxId: 'XX-XXXXXXX',
-  paymentTerms: 'Net 30',
-  openBalance: 12500.00,
-  totalPaid: 45000.00,
-  status: 'Active'
-})
+const loading = ref(true)
+const vendor = ref(null)
+const recentBills = ref([])
 
-const recentBills = ref([
-  { id: 'BILL-1045', date: '2024-11-15', dueDate: '2024-12-15', amount: 4500.00, status: 'Open' },
-  { id: 'BILL-0982', date: '2024-10-15', dueDate: '2024-11-14', amount: 4500.00, status: 'Paid' },
-  { id: 'BILL-0921', date: '2024-09-15', dueDate: '2024-10-15', amount: 8000.00, status: 'Paid' }
-])
+onMounted(async () => {
+  try {
+    const data = await payablesService.vendor(route.params.id)
+    const v = data.record || data
+    vendor.value = {
+      id: v.id,
+      name: v.name,
+      email: v.email || '—',
+      phone: v.phone || '—',
+      address: v.address || '—',
+      category: v.category || '—',
+      taxId: v.tax_id || '—',
+      paymentTerms: v.payment_terms || 'Net 30',
+      openBalance: Number(v.open_balance) || 0,
+      totalPaid: Number(v.total_paid) || 0,
+      status: v.status || 'Active'
+    }
+  } catch (e) {
+    console.error('Failed to load vendor:', e)
+  } finally {
+    loading.value = false
+  }
+})
 
 const goBack = () => {
   router.push('/payables/vendors')
 }
+
+import { payablesService } from '@/services/payablesService'
 </script>
 
 <template>
@@ -102,7 +112,7 @@ const goBack = () => {
         <div class="box metric-card bg-primary-gradient">
           <div class="box-body">
             <div class="metric-title">Open Balance</div>
-            <div class="metric-value">${{ vendor.openBalance.toLocaleString() }}</div>
+            <div class="metric-value">GHC {{ vendor.openBalance.toLocaleString() }}</div>
             <div class="metric-subtitle">Currently outstanding</div>
           </div>
         </div>
@@ -117,7 +127,7 @@ const goBack = () => {
           </div>
           <div class="box-body p-0">
             <div class="table-responsive">
-              <table class="ti-custom-table mb-0">
+              <table class="ti-custom-table mb-0 table-standard">
                 <thead>
                   <tr>
                     <th>Bill #</th>
@@ -133,7 +143,7 @@ const goBack = () => {
                     <td class="font-medium text-primary">{{ bill.id }}</td>
                     <td>{{ bill.date }}</td>
                     <td>{{ bill.dueDate }}</td>
-                    <td class="text-end font-semibold">${{ bill.amount.toLocaleString() }}</td>
+                    <td class="text-end font-semibold">GHC {{ bill.amount.toLocaleString() }}</td>
                     <td>
                       <span class="badge" :class="bill.status === 'Open' ? 'bg-warning-transparent' : 'bg-success-transparent'">
                         {{ bill.status }}

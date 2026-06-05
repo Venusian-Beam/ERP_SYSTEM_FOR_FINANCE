@@ -1,14 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import FinanceListWorkspace from '@/components/finance/FinanceListWorkspace.vue'
-import apiClient from '@/utils/apiClient'
+import { useApiPayload } from '@/composables/useApiPayload'
+import { receivablesService } from '@/services/receivablesService'
 
-const metrics = [
-  {label:'Outstanding invoices',value:'GHC 342,780',trend:'62 open invoices',icon:'ri-bill-line'},
-  {label:'Overdue',value:'GHC 48,250',trend:'9 invoices past due',icon:'ri-error-warning-line',tone:'danger'},
-  {label:'Collected this month',value:'GHC 418,600',trend:'+18.3% vs last month',icon:'ri-hand-coin-line',tone:'success'},
-  {label:'Draft invoices',value:'GHC 27,900',trend:'6 ready to send',icon:'ri-draft-line',tone:'warning'}
-]
+const { metrics, records, currentPage, totalPages, totalRecords, loading, nextPage, prevPage, goToPage } = useApiPayload(receivablesService.invoices)
 
 const columns = [
   {key:'invoice_number',label:'Invoice No.',primary:true},
@@ -19,29 +15,18 @@ const columns = [
   {key:'status',label:'Status',type:'status'}
 ]
 
-const records = ref([])
 const showModal = ref(false)
 const modalForm = ref({ customer_id: 1, invoice_number: '', invoice_date: '', due_date: '', amount: 0, status: 'Open' })
 
 const fetchInvoices = async () => {
-  try {
-    const { data } = await apiClient.get('/invoices')
-    records.value = data.map(inv => ({
-      ...inv,
-      customer_name: inv.customer ? inv.customer.name : 'Unknown'
-    }))
-  } catch (e) {
-    console.error("Failed to load invoices")
-  }
+  const data = await receivablesService.invoices()
+  metrics.value = data.metrics || []
+  records.value = data.records || []
 }
-
-onMounted(() => {
-  fetchInvoices()
-})
 
 const saveInvoice = async () => {
   try {
-    await apiClient.post('/invoices', modalForm.value)
+    await receivablesService.createInvoice(modalForm.value)
     showModal.value = false
     modalForm.value = { customer_id: 1, invoice_number: '', invoice_date: '', due_date: '', amount: 0, status: 'Open' }
     fetchInvoices()
@@ -63,6 +48,8 @@ const saveInvoice = async () => {
       :filters="['Open','Overdue','Paid']" 
       detail-base="/receivables/invoices" 
       @primary-action="showModal = true"
+      :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading"
+      @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage"
       :insight="{title:'Collection opportunity',text:'Automated reminders could accelerate GHC 82,450 currently due within the next seven days.'}" 
     />
 

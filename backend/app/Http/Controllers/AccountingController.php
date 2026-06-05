@@ -94,6 +94,14 @@ final class AccountingController extends Controller
             'lines.*.memo'   => ['nullable', 'string'],
         ]);
 
+        // Validate balance before creating anything
+        $debits  = array_sum(array_column($payload['lines'], 'debit'));
+        $credits = array_sum(array_column($payload['lines'], 'credit'));
+
+        if (round($debits, 2) !== round($credits, 2)) {
+            return back()->withErrors(['lines' => 'Journal entry is not balanced. Debits must equal Credits.']);
+        }
+
         $entry = DB::transaction(function () use ($payload) {
             $entry = JournalEntry::query()->create([
                 'reference'   => $payload['reference'],
@@ -105,14 +113,6 @@ final class AccountingController extends Controller
 
             foreach ($payload['lines'] as $line) {
                 $entry->lines()->create($line);
-            }
-
-            // Validate the entry is balanced before committing
-            $debits  = array_sum(array_column($payload['lines'], 'debit'));
-            $credits = array_sum(array_column($payload['lines'], 'credit'));
-
-            if (round($debits, 2) !== round($credits, 2)) {
-                throw new \RuntimeException('Journal entry is not balanced. Debits must equal Credits.');
             }
 
             return $entry;

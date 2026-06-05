@@ -1,20 +1,24 @@
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/finance/StatusBadge.vue'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 import { formatCurrency, formatDate } from '@/utils/formatters'
+import { accountingService } from '@/services/accountingService'
 
 const router = useRouter()
 
 // ─── State ────────────────────────────────────────────────
-const loading      = ref(false)
+const loading      = ref(true)
 const searchQuery  = ref('')
 const filterStatus = ref('all')
 const dateRange    = ref({ from: null, to: null })
 const showNewModal = ref(false)
 const selectedEntry = ref(null)
+const entries      = ref([])
+const metrics      = ref([])
+const accountOptions = ref([])
 
 // ─── Journal Entry Form ────────────────────────────────────
 const emptyLine = () => ({
@@ -36,99 +40,39 @@ const form = reactive({
 
 const formErrors = reactive({})
 
-// ─── Mock Data ─────────────────────────────────────────────
-const entries = ref([
-  {
-    id: 1,
-    entryNo:     'JE-0001',
-    date:        '2024-11-14',
-    description: 'Q4 Software License Purchase',
-    reference:   'INV-2045',
-    status:      'posted',
-    createdBy:   'Patrick M.',
-    totalDebit:  2400.00,
-    totalCredit: 2400.00,
-    lines: [
-      { accountCode: '5300', accountName: 'Software & SaaS', debit: 2400, credit: 0 },
-      { accountCode: '1010', accountName: 'Business Checking', debit: 0, credit: 2400 }
-    ]
-  },
-  {
-    id: 2,
-    entryNo:     'JE-0002',
-    date:        '2024-11-13',
-    description: 'Client Payment - Acme Corp',
-    reference:   'REC-0088',
-    status:      'posted',
-    createdBy:   'Sarah J.',
-    totalDebit:  15000.00,
-    totalCredit: 15000.00,
-    lines: [
-      { accountCode: '1010', accountName: 'Business Checking', debit: 15000, credit: 0 },
-      { accountCode: '4100', accountName: 'Service Revenue',   debit: 0, credit: 15000 }
-    ]
-  },
-  {
-    id: 3,
-    entryNo:     'JE-0003',
-    date:        '2024-11-12',
-    description: 'Payroll Tax Adjustment',
-    reference:   'PR-NOV-1',
-    status:      'pending',
-    createdBy:   'Patrick M.',
-    totalDebit:  3200.00,
-    totalCredit: 3200.00,
-    lines: [
-      { accountCode: '5100', accountName: 'Payroll Expense',      debit: 3200, credit: 0 },
-      { accountCode: '2100', accountName: 'Payroll Liabilities',  debit: 0,    credit: 3200 }
-    ]
-  },
-  {
-    id: 4,
-    entryNo:     'JE-0004',
-    date:        '2024-11-11',
-    description: 'Office Rent - November',
-    reference:   'RENT-NOV',
-    status:      'posted',
-    createdBy:   'Sarah J.',
-    totalDebit:  8500.00,
-    totalCredit: 8500.00,
-    lines: [
-      { accountCode: '5200', accountName: 'Rent Expense',         debit: 8500, credit: 0 },
-      { accountCode: '1010', accountName: 'Business Checking',    debit: 0,    credit: 8500 }
-    ]
-  },
-  {
-    id: 5,
-    entryNo:     'JE-0005',
-    date:        '2024-11-10',
-    description: 'Consulting Revenue - Project X',
-    reference:   'INV-0091',
-    status:      'draft',
-    createdBy:   'Patrick M.',
-    totalDebit:  25000.00,
-    totalCredit: 25000.00,
-    lines: [
-      { accountCode: '1100', accountName: 'Accounts Receivable',  debit: 25000, credit: 0 },
-      { accountCode: '4100', accountName: 'Service Revenue',      debit: 0,     credit: 25000 }
-    ]
-  },
-  {
-    id: 6,
-    entryNo:     'JE-0006',
-    date:        '2024-11-08',
-    description: 'Marketing Agency Retainer',
-    reference:   'MKTG-NOV',
-    status:      'voided',
-    createdBy:   'Sarah J.',
-    totalDebit:  6000.00,
-    totalCredit: 6000.00,
-    lines: [
-      { accountCode: '5400', accountName: 'Marketing Expense',    debit: 6000, credit: 0 },
-      { accountCode: '2000', accountName: 'Accounts Payable',     debit: 0,    credit: 6000 }
-    ]
+// ─── Fetch Data ────────────────────────────────────────────
+onMounted(async () => {
+  try {
+    const [entriesRes, accountsRes] = await Promise.all([
+      accountingService.journalEntries(),
+      accountingService.accounts()
+    ])
+    metrics.value = entriesRes.metrics || []
+    entries.value = (entriesRes.records || []).map(e => ({
+      id: e.id,
+      entryNo: `JE-${String(e.id).padStart(4, '0')}`,
+      date: e.date,
+      description: e.description,
+      reference: e.reference,
+      status: e.status.toLowerCase(),
+      createdBy: '',
+      totalDebit: 0,
+      totalCredit: 0,
+      lines_count: e.lines,
+      lines: []
+    }))
+    accountOptions.value = (accountsRes.records || []).map(a => ({
+      id: a.id,
+      code: a.code,
+      name: a.name,
+      type: a.type.toLowerCase()
+    }))
+  } catch (e) {
+    console.error('Failed to load journal entries:', e)
+  } finally {
+    loading.value = false
   }
-])
+})
 
 // ─── Computed ──────────────────────────────────────────────
 const filteredEntries = computed(() => {
@@ -143,15 +87,10 @@ const filteredEntries = computed(() => {
   })
 })
 
-const summary = computed(() => ({
-  total:   entries.value.length,
-  posted:  entries.value.filter(e => e.status === 'posted').length,
-  pending: entries.value.filter(e => e.status === 'pending').length,
-  draft:   entries.value.filter(e => e.status === 'draft').length,
-  totalDebits: entries.value
-    .filter(e => e.status === 'posted')
-    .reduce((s, e) => s + e.totalDebit, 0)
-}))
+const metricSummary = computed(() => {
+  const m = Object.fromEntries(metrics.value.map(m => [m.label, m.value]))
+  return m
+})
 
 // Totals for new entry form
 const formTotalDebit = computed(() =>
@@ -168,20 +107,6 @@ const formIsBalanced = computed(() =>
 )
 
 // ─── Accounts list for line selector ──────────────────────
-const accountOptions = [
-  { id: 1, code: '1010', name: 'Business Checking',   type: 'asset'   },
-  { id: 2, code: '1020', name: 'Savings Reserve',      type: 'asset'   },
-  { id: 3, code: '1100', name: 'Accounts Receivable',  type: 'asset'   },
-  { id: 4, code: '2000', name: 'Accounts Payable',     type: 'liability'},
-  { id: 5, code: '2100', name: 'Payroll Liabilities',  type: 'liability'},
-  { id: 6, code: '4100', name: 'Service Revenue',      type: 'revenue'  },
-  { id: 7, code: '4200', name: 'Product Sales',        type: 'revenue'  },
-  { id: 8, code: '5100', name: 'Payroll Expense',      type: 'expense'  },
-  { id: 9, code: '5200', name: 'Rent Expense',         type: 'expense'  },
-  { id: 10,code: '5300', name: 'Software & SaaS',      type: 'expense'  },
-  { id: 11,code: '5400', name: 'Marketing Expense',    type: 'expense'  }
-]
-
 const selectAccount = (line, account) => {
   line.accountId   = account.id
   line.accountCode = account.code
@@ -297,8 +222,8 @@ const toggleExpand = (id) => {
           <i class="ri-article-line"></i>
         </div>
         <div>
-          <p class="strip-label">Total Entries</p>
-          <p class="strip-val">{{ summary.total }}</p>
+          <p class="strip-label">Journal Entries</p>
+          <p class="strip-val">{{ metricSummary['Journal entries'] || '0' }}</p>
         </div>
       </div>
       <div class="strip-divider"></div>
@@ -308,17 +233,7 @@ const toggleExpand = (id) => {
         </div>
         <div>
           <p class="strip-label">Posted</p>
-          <p class="strip-val text-success">{{ summary.posted }}</p>
-        </div>
-      </div>
-      <div class="strip-divider"></div>
-      <div class="strip-card">
-        <div class="strip-icon icon-warning">
-          <i class="ri-time-line"></i>
-        </div>
-        <div>
-          <p class="strip-label">Pending</p>
-          <p class="strip-val text-warning">{{ summary.pending }}</p>
+          <p class="strip-val text-success">{{ metricSummary['Posted entries'] || '0' }}</p>
         </div>
       </div>
       <div class="strip-divider"></div>
@@ -328,19 +243,7 @@ const toggleExpand = (id) => {
         </div>
         <div>
           <p class="strip-label">Drafts</p>
-          <p class="strip-val">{{ summary.draft }}</p>
-        </div>
-      </div>
-      <div class="strip-divider"></div>
-      <div class="strip-card">
-        <div class="strip-icon icon-success">
-          <i class="ri-funds-box-line"></i>
-        </div>
-        <div>
-          <p class="strip-label">Total Posted (DR)</p>
-          <p class="strip-val text-success tabular-nums">
-            {{ formatCurrency(summary.totalDebits) }}
-          </p>
+          <p class="strip-val">{{ metricSummary['Draft entries'] || '0' }}</p>
         </div>
       </div>
     </div>
@@ -404,7 +307,7 @@ const toggleExpand = (id) => {
         </div>
 
         <!-- Table -->
-        <table v-else class="je-table">
+        <table v-else class="table-standard">
           <thead>
             <tr>
               <th style="width:40px"></th>
@@ -968,39 +871,10 @@ const toggleExpand = (id) => {
 }
 
 /* ─── Journal Entry Table ─────────────────────────────────── */
-.je-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.je-table thead tr {
-  background: var(--bg-app);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.je-table th {
-  padding: 0.75rem 1rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.je-table td {
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--border-default);
-  vertical-align: middle;
-}
-
 .je-row {
   transition: background var(--transition-fast);
   cursor: pointer;
 }
-
-.je-row:hover td { background: rgba(99,102,241,0.025); }
 
 .row-voided td {
   opacity: 0.5;

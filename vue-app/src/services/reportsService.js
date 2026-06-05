@@ -1,8 +1,8 @@
 import api from './api'
 
 export const reportsService = {
-  profitLoss: () => api.get('/reports/profit-loss'),
-  balanceSheet: () => api.get('/reports/balance-sheet'),
-  cashFlow: () => api.get('/reports/cash-flow'),
-  auditTrail: () => api.get('/reports/audit-trail'),
+  profitLoss: (params) => api.get('/reports/profit-loss', params),
+  balanceSheet: (params) => api.get('/reports/balance-sheet', params),
+  cashFlow: (params) => api.get('/reports/cash-flow', params),
+  auditTrail: (params) => api.get('/reports/audit-trail', params),
 }
