@@ -14,4 +14,6 @@ export const payablesService = {
   payments: (params) => api.get('/payables/payments', params),
   payment: (id) => api.get(`/payables/payments/${id}`),
   createPayment: (payload) => api.post('/payables/payments', payload),
+  updatePayment: (id, payload) => api.put(`/payables/payments/${id}`, payload),
+  deletePayment: (id) => api.delete(`/payables/payments/${id}`),
 }

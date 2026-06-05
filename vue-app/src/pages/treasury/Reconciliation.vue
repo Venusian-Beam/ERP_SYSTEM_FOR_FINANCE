@@ -16,8 +16,18 @@ const columns = [
 const handlePrimaryAction = () => {
   console.log('Reconcile Selected — flow not yet implemented')
 }
+
+const handleEdit = (record) => {
+  alert(`Edit reconciliation entry for ${record.description || record.date}`)
+}
+
+const handleDelete = (record) => {
+  if (confirm(`Delete reconciliation entry from ${record.date}? This cannot be undone.`)) {
+    records.value = records.value.filter(r => r !== record)
+  }
+}
 </script>
 
 <template>
-  <FinanceListWorkspace title="Reconciliation" subtitle="Match bank feed activity to ledger transactions" action-label="Reconcile Selected" action-icon="ri-check-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Matched','Review','Pending']" :insight="{title:'Reconciliation is backend-driven',text:'Suggested matches and pending items are derived from bank transactions and journal links.'}" :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading" @primary-action="handlePrimaryAction" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage" />
+  <FinanceListWorkspace title="Reconciliation" subtitle="Match bank feed activity to ledger transactions" action-label="Reconcile Selected" action-icon="ri-check-line" :metrics="metrics" :columns="columns" :records="records" :filters="['Matched','Review','Pending']" :insight="{title:'Reconciliation is backend-driven',text:'Suggested matches and pending items are derived from bank transactions and journal links.'}" :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading" @primary-action="handlePrimaryAction" @edit-action="handleEdit" @delete-action="handleDelete" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage" />
 </template>

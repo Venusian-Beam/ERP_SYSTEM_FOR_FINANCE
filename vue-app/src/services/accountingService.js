@@ -8,5 +8,7 @@ export const accountingService = {
   journalEntries: (params) => api.get('/accounting/journal-entries', params),
   journalEntry: (id) => api.get(`/accounting/journal-entries/${id}`),
   createJournalEntry: (payload) => api.post('/accounting/journal-entries', payload),
+  updateJournalEntry: (id, payload) => api.put(`/accounting/journal-entries/${id}`, payload),
+  deleteJournalEntry: (id) => api.delete(`/accounting/journal-entries/${id}`),
   ledger: (params) => api.get('/accounting/general-ledger', params),
 }

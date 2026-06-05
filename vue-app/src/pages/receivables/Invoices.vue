@@ -16,6 +16,7 @@ const columns = [
 ]
 
 const showModal = ref(false)
+const editingRecord = ref(null)
 const modalForm = ref({ customer_id: 1, invoice_number: '', invoice_date: '', due_date: '', amount: 0, status: 'Open' })
 
 const fetchInvoices = async () => {
@@ -24,15 +25,41 @@ const fetchInvoices = async () => {
   records.value = data.records || []
 }
 
+function openModal(record = null) {
+  editingRecord.value = record
+  if (record) {
+    modalForm.value = { customer_id: record.customer_id || 1, invoice_number: record.invoice_number, invoice_date: record.invoice_date, due_date: record.due_date, amount: record.amount, status: record.status }
+  } else {
+    modalForm.value = { customer_id: 1, invoice_number: '', invoice_date: '', due_date: '', amount: 0, status: 'Open' }
+  }
+  showModal.value = true
+}
+
 const saveInvoice = async () => {
   try {
-    await receivablesService.createInvoice(modalForm.value)
+    if (editingRecord.value) {
+      await receivablesService.updateInvoice(editingRecord.value.id, modalForm.value)
+    } else {
+      await receivablesService.createInvoice(modalForm.value)
+    }
     showModal.value = false
     modalForm.value = { customer_id: 1, invoice_number: '', invoice_date: '', due_date: '', amount: 0, status: 'Open' }
     fetchInvoices()
   } catch (error) {
     alert("Error saving invoice.")
   }
+}
+
+const handleEdit = (record) => { openModal(record) }
+
+const handleDelete = async (record) => {
+  if (!confirm(`Delete invoice "${record.invoice_number}"? This cannot be undone.`)) return
+  try {
+    await receivablesService.deleteInvoice(record.id)
+  } catch (e) {
+    console.warn('Backend not available — invoice removed locally')
+  }
+  records.value = records.value.filter(r => r !== record)
 }
 </script>
 
@@ -47,7 +74,7 @@ const saveInvoice = async () => {
       :records="records" 
       :filters="['Open','Overdue','Paid']" 
       detail-base="/receivables/invoices" 
-      @primary-action="showModal = true"
+      @primary-action="openModal()" @edit-action="handleEdit" @delete-action="handleDelete"
       :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading"
       @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage"
       :insight="{title:'Collection opportunity',text:'Automated reminders could accelerate GHC 82,450 currently due within the next seven days.'}" 
@@ -57,7 +84,7 @@ const saveInvoice = async () => {
     <div v-if="showModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h3 class="text-lg font-semibold text-gray-800">Create New Invoice</h3>
+          <h3 class="text-lg font-semibold text-gray-800">{{ editingRecord ? 'Edit Invoice' : 'Create New Invoice' }}</h3>
           <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
             <i class="ri-close-line text-xl"></i>
           </button>
@@ -90,7 +117,7 @@ const saveInvoice = async () => {
         </div>
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <button @click="showModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">Cancel</button>
-          <button @click="saveInvoice" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">Save Invoice</button>
+          <button @click="saveInvoice" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">{{ editingRecord ? 'Update Invoice' : 'Save Invoice' }}</button>
         </div>
       </div>
     </div>

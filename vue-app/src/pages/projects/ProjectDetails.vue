@@ -102,6 +102,12 @@ const getPriorityClass = (priority) => ({
   'medium': 'bg-warning/10 text-warning',
   'low': 'bg-success/10 text-success'
 })[priority] || 'bg-secondary/10 text-secondary'
+
+const deleteTask = (task) => {
+  if (!confirm(`Delete task "${task.title}"? This cannot be undone.`)) return
+  try { apiClient.delete(`/project-tasks/${task.id}`) } catch (e) { console.warn('Backend not available') }
+  tasks.value = tasks.value.filter(t => t !== task)
+}
 </script>
 
 <template>
@@ -244,8 +250,11 @@ const getPriorityClass = (priority) => ({
                   <span class="badge" :class="getStatusClass(task.status)">{{ task.status }}</span>
                 </td>
                 <td>
-                  <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm">
+                  <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit task: ${task.title}`)">
                     <i class="ri-edit-line"></i>
+                  </button>
+                  <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteTask(task)">
+                    <i class="ri-delete-bin-line"></i>
                   </button>
                 </td>
               </tr>

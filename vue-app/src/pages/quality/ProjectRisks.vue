@@ -20,6 +20,12 @@ const getRiskLevel = (probability, impact) => {
   if (probability === 'medium' || impact === 'medium') return { class: 'bg-info', text: 'Medium' }
   return { class: 'bg-success', text: 'Low' }
 }
+
+const deleteRisk = (risk) => {
+  if (!confirm(`Delete risk "${risk.title}"? This cannot be undone.`)) return
+  try { qualityService.deleteRisk(risk.id) } catch (e) { console.warn('Backend not available') }
+  risks.value = risks.value.filter(r => r !== risk)
+}
 </script>
 
 <template>
@@ -113,7 +119,8 @@ const getRiskLevel = (probability, impact) => {
                   <td>
                     <div class="flex gap-1">
                       <button class="ti-btn ti-btn-soft-primary ti-btn-icon ti-btn-sm"><i class="ri-eye-line"></i></button>
-                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit risk: ${risk.title}`)"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteRisk(risk)"><i class="ri-delete-bin-line"></i></button>
                     </div>
                   </td>
                 </tr>

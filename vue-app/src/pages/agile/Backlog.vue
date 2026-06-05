@@ -25,6 +25,12 @@ const getPriorityClass = (priority) => ({
   'medium': 'bg-warning/10 text-warning',
   'low': 'bg-success/10 text-success'
 })[priority]
+
+const deleteBacklogItem = (item) => {
+  if (!confirm(`Delete backlog item "${item.title}"? This cannot be undone.`)) return
+  try { agileService.deleteBacklogItem(item.id) } catch (e) { console.warn('Backend not available') }
+  backlogItems.value = backlogItems.value.filter(i => i !== item)
+}
 </script>
 
 <template>
@@ -126,7 +132,8 @@ const getPriorityClass = (priority) => ({
                   <td>
                     <div class="flex gap-1">
                       <button class="ti-btn ti-btn-soft-primary ti-btn-icon ti-btn-sm"><i class="ri-eye-line"></i></button>
-                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit backlog item: ${item.title}`)"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteBacklogItem(item)"><i class="ri-delete-bin-line"></i></button>
                     </div>
                   </td>
                 </tr>

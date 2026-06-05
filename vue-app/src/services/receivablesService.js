@@ -14,4 +14,6 @@ export const receivablesService = {
   receipts: (params) => api.get('/receivables/receipts', params),
   receipt: (id) => api.get(`/receivables/receipts/${id}`),
   createReceipt: (payload) => api.post('/receivables/receipts', payload),
+  updateReceipt: (id, payload) => api.put(`/receivables/receipts/${id}`, payload),
+  deleteReceipt: (id) => api.delete(`/receivables/receipts/${id}`),
 }

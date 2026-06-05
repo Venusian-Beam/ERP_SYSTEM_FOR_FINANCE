@@ -30,25 +30,60 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::prefix('accounting')->group(function () use ($finance) {
         Route::get('chart-of-accounts', [$finance, 'chartOfAccounts']);
         Route::get('accounts', [$finance, 'chartOfAccounts']);
+        Route::post('accounts', [$finance, 'createAccount']);
+        Route::put('accounts/{financialAccount}', [$finance, 'updateAccount']);
+        Route::delete('accounts/{financialAccount}', [$finance, 'deleteAccount']);
         Route::get('journal-entries', [$finance, 'journalEntries']);
+        Route::get('journal-entries/{journalEntry}', [$finance, 'journalEntry']);
+        Route::post('journal-entries', [$finance, 'createJournalEntry']);
+        Route::put('journal-entries/{journalEntry}', [$finance, 'updateJournalEntry']);
+        Route::delete('journal-entries/{journalEntry}', [$finance, 'deleteJournalEntry']);
         Route::get('general-ledger', [$finance, 'generalLedger']);
     });
 
     Route::prefix('payables')->group(function () use ($finance) {
         Route::get('vendors', [$finance, 'vendors']);
+        Route::get('vendors/{supplier}', [$finance, 'vendor']);
+        Route::post('vendors', [$finance, 'createVendor']);
+        Route::put('vendors/{supplier}', [$finance, 'updateVendor']);
+        Route::delete('vendors/{supplier}', [$finance, 'deleteVendor']);
         Route::get('bills', [$finance, 'bills']);
+        Route::get('bills/{supplierInvoice}', [$finance, 'bill']);
+        Route::post('bills', [$finance, 'createBill']);
+        Route::put('bills/{supplierInvoice}', [$finance, 'updateBill']);
+        Route::delete('bills/{supplierInvoice}', [$finance, 'deleteBill']);
         Route::get('payments', [$finance, 'payments']);
+        Route::get('payments/{payment}', [$finance, 'payment']);
+        Route::post('payments', [$finance, 'createPayment']);
+        Route::put('payments/{payment}', [$finance, 'updatePayment']);
+        Route::delete('payments/{payment}', [$finance, 'deletePayment']);
     });
 
     Route::prefix('receivables')->group(function () use ($finance) {
         Route::get('customers', [$finance, 'customers']);
+        Route::get('customers/{customer}', [$finance, 'customer']);
+        Route::post('customers', [$finance, 'createCustomer']);
+        Route::put('customers/{customer}', [$finance, 'updateCustomer']);
+        Route::delete('customers/{customer}', [$finance, 'deleteCustomer']);
         Route::get('invoices', [$finance, 'receivableInvoices']);
+        Route::post('invoices', [$finance, 'createReceivableInvoice']);
+        Route::put('invoices/{customerInvoice}', [$finance, 'updateReceivableInvoice']);
+        Route::delete('invoices/{customerInvoice}', [$finance, 'deleteReceivableInvoice']);
         Route::get('receipts', [$finance, 'receipts']);
+        Route::get('receipts/{payment}', [$finance, 'receipt']);
+        Route::post('receipts', [$finance, 'createReceipt']);
+        Route::put('receipts/{payment}', [$finance, 'updateReceipt']);
+        Route::delete('receipts/{payment}', [$finance, 'deleteReceipt']);
     });
 
     Route::prefix('treasury')->group(function () use ($finance) {
         Route::get('bank-accounts', [$finance, 'bankAccounts']);
+        Route::post('bank-accounts', [$finance, 'createBankAccount']);
+        Route::put('bank-accounts/{bankAccount}', [$finance, 'updateBankAccount']);
+        Route::delete('bank-accounts/{bankAccount}', [$finance, 'deleteBankAccount']);
         Route::get('reconciliation', [$finance, 'reconciliation']);
+        Route::post('reconciliation', [$finance, 'createReconciliation']);
+        Route::put('reconciliation/{bankTransaction}', [$finance, 'updateReconciliation']);
         Route::get('cash-forecast', [$finance, 'cashForecast']);
     });
 

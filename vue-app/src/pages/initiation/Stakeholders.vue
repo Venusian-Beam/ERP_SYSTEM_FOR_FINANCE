@@ -56,6 +56,12 @@ const saveStakeholder = async () => {
     console.error('Failed to save stakeholder:', e)
   }
 }
+
+const deleteStakeholder = (stakeholder) => {
+  if (!confirm(`Delete stakeholder "${stakeholder.name}"? This cannot be undone.`)) return
+  try { initiationService.deleteStakeholder(stakeholder.id) } catch (e) { console.warn('Backend not available') }
+  stakeholders.value = stakeholders.value.filter(s => s !== stakeholder)
+}
 </script>
 
 <template>
@@ -96,7 +102,8 @@ const saveStakeholder = async () => {
                   <td>
                     <div class="flex gap-1">
                       <button class="ti-btn ti-btn-soft-primary ti-btn-icon ti-btn-sm"><i class="ri-eye-line"></i></button>
-                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit stakeholder: ${stakeholder.name}`)"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteStakeholder(stakeholder)"><i class="ri-delete-bin-line"></i></button>
                     </div>
                   </td>
                 </tr>

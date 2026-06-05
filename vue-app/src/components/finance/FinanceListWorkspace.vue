@@ -22,7 +22,7 @@ const props = defineProps({
   currency: { type: String, default: 'GHC' },
 })
 
-const emit = defineEmits(['primary-action', 'next-page', 'prev-page', 'go-to-page'])
+const emit = defineEmits(['primary-action', 'edit-action', 'delete-action', 'next-page', 'prev-page', 'go-to-page'])
 
 const router = useRouter()
 const search = ref('')
@@ -203,7 +203,8 @@ const maxOf = (arr) => Math.max(...arr)
               </td>
               <td class="right">
                 <button class="icon-btn" title="View details" @click="openRecord(record)"><i class="ri-eye-line"></i></button>
-                <button class="icon-btn" title="More actions"><i class="ri-more-2-fill"></i></button>
+                <button class="icon-btn" title="Edit" @click="$emit('edit-action', record)"><i class="ri-edit-line"></i></button>
+                <button class="icon-btn" title="Delete" @click="$emit('delete-action', record)"><i class="ri-delete-bin-line"></i></button>
               </td>
             </tr>
             <tr v-if="!filteredRecords.length">

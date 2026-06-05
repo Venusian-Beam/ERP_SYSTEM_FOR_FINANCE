@@ -15,11 +15,26 @@ const columns = [
 ]
 
 const showModal = ref(false)
+const editingRecord = ref(null)
 const modalForm = ref({ name: '', bank: '', type: 'Checking', balance: 0, status: 'Active' })
+
+function openModal(record = null) {
+  editingRecord.value = record
+  if (record) {
+    modalForm.value = { name: record.name, bank: record.bank, type: record.type, balance: record.balance, status: record.status }
+  } else {
+    modalForm.value = { name: '', bank: '', type: 'Checking', balance: 0, status: 'Active' }
+  }
+  showModal.value = true
+}
 
 const saveAccount = async () => {
   try {
-    await treasuryService.createBankAccount(modalForm.value)
+    if (editingRecord.value) {
+      await treasuryService.updateBankAccount(editingRecord.value.id, modalForm.value)
+    } else {
+      await treasuryService.createBankAccount(modalForm.value)
+    }
     showModal.value = false
     modalForm.value = { name: '', bank: '', type: 'Checking', balance: 0, status: 'Active' }
     const data = await treasuryService.bankAccounts()
@@ -29,17 +44,29 @@ const saveAccount = async () => {
     alert('Error saving bank account.')
   }
 }
+
+const handleEdit = (record) => { openModal(record) }
+
+const handleDelete = async (record) => {
+  if (!confirm(`Delete bank account "${record.name}"? This cannot be undone.`)) return
+  try {
+    await treasuryService.deleteBankAccount(record.id)
+  } catch (e) {
+    console.warn('Backend not available — bank account removed locally')
+  }
+  records.value = records.value.filter(r => r !== record)
+}
 </script>
 
 <template>
   <div>
-    <FinanceListWorkspace title="Bank Accounts" subtitle="Monitor connected bank balances and feed health" action-label="Connect Account" action-icon="ri-link-m" :metrics="metrics" :columns="columns" :records="records" :filters="['Active','Review']" :insight="{title:'Liquidity remains healthy',text:'Available cash is calculated from connected bank account balances in the backend.'}" :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading" @primary-action="showModal = true" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage" />
+    <FinanceListWorkspace title="Bank Accounts" subtitle="Monitor connected bank balances and feed health" action-label="Connect Account" action-icon="ri-link-m" :metrics="metrics" :columns="columns" :records="records" :filters="['Active','Review']" :insight="{title:'Liquidity remains healthy',text:'Available cash is calculated from connected bank account balances in the backend.'}" :current-page="currentPage" :total-pages="totalPages" :total-records="totalRecords" :loading="loading" @primary-action="openModal()" @edit-action="handleEdit" @delete-action="handleDelete" @next-page="nextPage" @prev-page="prevPage" @go-to-page="goToPage" />
 
     <!-- Connect Account Modal -->
     <div v-if="showModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h3 class="text-lg font-semibold text-gray-800">Connect Bank Account</h3>
+          <h3 class="text-lg font-semibold text-gray-800">{{ editingRecord ? 'Edit Bank Account' : 'Connect Bank Account' }}</h3>
           <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
             <i class="ri-close-line text-xl"></i>
           </button>
@@ -78,7 +105,7 @@ const saveAccount = async () => {
         </div>
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <button @click="showModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">Cancel</button>
-          <button @click="saveAccount" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">Connect Account</button>
+          <button @click="saveAccount" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">{{ editingRecord ? 'Update Account' : 'Connect Account' }}</button>
         </div>
       </div>
     </div>

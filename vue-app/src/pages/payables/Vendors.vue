@@ -13,6 +13,7 @@ const loading = ref(false)
 
 // Modal State
 const showModal = ref(false)
+const editingVendor = ref(null)
 const modalForm = ref({ name: '', email: '', phone: '', status: 'active' })
 
 const fetchVendors = async () => {
@@ -41,6 +42,18 @@ const filteredVendors = computed(() => {
 
 const viewVendor = (id) => router.push(`/payables/vendors/${id}`)
 
+const openAddModal = () => {
+  editingVendor.value = null
+  modalForm.value = { name: '', email: '', phone: '', status: 'active' }
+  showModal.value = true
+}
+
+const editVendor = (vendor) => {
+  editingVendor.value = vendor
+  modalForm.value = { name: vendor.name, email: vendor.email, phone: vendor.phone, status: vendor.status }
+  showModal.value = true
+}
+
 const handleExport = () => {
   exportToCSV(filteredVendors.value, [
     { label: 'Vendor Name', key: 'name' },
@@ -51,10 +64,15 @@ const handleExport = () => {
 
 const saveVendor = async () => {
   try {
-    const data = await payablesService.createVendor(modalForm.value)
-    vendors.value.unshift(data.record || data)
+    if (editingVendor.value) {
+      await payablesService.updateVendor(editingVendor.value.id, modalForm.value)
+    } else {
+      await payablesService.createVendor(modalForm.value)
+    }
     showModal.value = false
+    editingVendor.value = null
     modalForm.value = { name: '', email: '', phone: '', status: 'active' }
+    fetchVendors()
   } catch (error) {
     alert("Error saving vendor. Check console.")
   }
@@ -78,7 +96,7 @@ const deleteVendor = async (id) => {
         <button class="ti-btn btn-primary-soft" @click="handleExport">
           <i class="ri-download-2-line"></i> Export
         </button>
-        <button class="ti-btn btn-gradient" @click="showModal = true">
+        <button class="ti-btn btn-gradient" @click="openAddModal">
           <i class="ri-add-line"></i> Add Vendor
         </button>
       </template>
@@ -121,6 +139,9 @@ const deleteVendor = async (id) => {
                   <button class="btn btn-sm btn-icon btn-primary-light" @click="viewVendor(vendor.id)">
                     <i class="ri-eye-line"></i>
                   </button>
+                  <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="editVendor(vendor)">
+                    <i class="ri-edit-line"></i>
+                  </button>
                   <button class="btn btn-sm btn-icon btn-danger-light ms-1" @click="deleteVendor(vendor.id)">
                     <i class="ri-delete-bin-line"></i>
                   </button>
@@ -139,7 +160,7 @@ const deleteVendor = async (id) => {
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h3 class="text-lg font-semibold text-gray-800">Add New Vendor</h3>
+          <h3 class="text-lg font-semibold text-gray-800">{{ editingVendor ? 'Edit Vendor' : 'Add New Vendor' }}</h3>
           <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
             <i class="ri-close-line text-xl"></i>
           </button>
@@ -160,7 +181,7 @@ const deleteVendor = async (id) => {
         </div>
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <button @click="showModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">Cancel</button>
-          <button @click="saveVendor" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">Save Vendor</button>
+          <button @click="saveVendor" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 transition-colors shadow-sm">{{ editingVendor ? 'Update Vendor' : 'Save Vendor' }}</button>
         </div>
       </div>
     </div>

@@ -15,6 +15,12 @@ onMounted(async () => {
     console.error('Failed to load test cases:', e)
   }
 })
+
+const deleteTestCase = (test) => {
+  if (!confirm(`Delete test case "${test.name}"? This cannot be undone.`)) return
+  try { qualityService.deleteTestCase(test.id) } catch (e) { console.warn('Backend not available') }
+  testCases.value = testCases.value.filter(t => t !== test)
+}
 </script>
 
 <template>
@@ -109,7 +115,8 @@ onMounted(async () => {
                   <td>
                     <div class="flex gap-1">
                       <button class="ti-btn ti-btn-soft-primary ti-btn-icon ti-btn-sm"><i class="ri-play-line"></i></button>
-                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit test case: ${test.name}`)"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteTestCase(test)"><i class="ri-delete-bin-line"></i></button>
                     </div>
                   </td>
                 </tr>

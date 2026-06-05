@@ -15,6 +15,7 @@ const searchQuery  = ref('')
 const filterStatus = ref('all')
 const dateRange    = ref({ from: null, to: null })
 const showNewModal = ref(false)
+const editingEntryId = ref(null)
 const selectedEntry = ref(null)
 const entries      = ref([])
 const metrics      = ref([])
@@ -40,6 +41,17 @@ const form = reactive({
 
 const formErrors = reactive({})
 
+const fallbackAccounts = [
+  { id: 1, code: '1010', name: 'Business Checking',  type: 'asset' },
+  { id: 2, code: '1100', name: 'Accounts Receivable', type: 'asset' },
+  { id: 3, code: '2000', name: 'Accounts Payable',    type: 'liability' },
+  { id: 4, code: '2100', name: 'Payroll Liabilities', type: 'liability' },
+  { id: 5, code: '4100', name: 'Service Revenue',     type: 'revenue' },
+  { id: 6, code: '5100', name: 'Payroll Expense',     type: 'expense' },
+  { id: 7, code: '5200', name: 'Rent Expense',        type: 'expense' },
+  { id: 8, code: '5300', name: 'Software & SaaS',     type: 'expense' },
+]
+
 // ─── Fetch Data ────────────────────────────────────────────
 onMounted(async () => {
   try {
@@ -61,14 +73,13 @@ onMounted(async () => {
       lines_count: e.lines,
       lines: []
     }))
-    accountOptions.value = (accountsRes.records || []).map(a => ({
-      id: a.id,
-      code: a.code,
-      name: a.name,
-      type: a.type.toLowerCase()
-    }))
+    const rawAccounts = accountsRes.records || []
+    accountOptions.value = rawAccounts.length
+      ? rawAccounts.map(a => ({ id: a.id, code: a.code, name: a.name, type: (a.type || '').toLowerCase() }))
+      : fallbackAccounts
   } catch (e) {
     console.error('Failed to load journal entries:', e)
+    accountOptions.value = fallbackAccounts
   } finally {
     loading.value = false
   }
@@ -125,10 +136,33 @@ const removeLine = (index) => {
 }
 
 const openNewModal = () => {
+  editingEntryId.value = null
   form.date        = new Date().toISOString().split('T')[0]
   form.reference   = ''
   form.description = ''
   form.lines       = [emptyLine(), emptyLine()]
+  Object.keys(formErrors).forEach(k => delete formErrors[k])
+  showNewModal.value = true
+}
+
+const editEntry = (entry) => {
+  editingEntryId.value = entry.id
+  form.date = entry.date
+  form.reference = entry.reference || ''
+  form.description = entry.description
+  form.lines = (entry.lines && entry.lines.length ? entry.lines : [{ debit: 0, credit: 0 }]).map(l => {
+    const match = accountOptions.value.find(a => a.code === l.accountCode)
+    return {
+      id: Date.now() + Math.random(),
+      accountId: match?.id || null,
+      accountName: l.accountName || '',
+      accountCode: l.accountCode || '',
+      description: l.description || '',
+      debit: l.debit || '',
+      credit: l.credit || ''
+    }
+  })
+  if (form.lines.length < 2) form.lines.push(emptyLine())
   Object.keys(formErrors).forEach(k => delete formErrors[k])
   showNewModal.value = true
 }
@@ -144,19 +178,14 @@ const validateForm = () => {
   return Object.keys(formErrors).length === 0
 }
 
-const saveEntry = (status = 'draft') => {
+const saveEntry = async (status = 'draft') => {
   if (!validateForm()) return
 
-  const newEntry = {
-    id:          Date.now(),
-    entryNo:     `JE-${String(entries.value.length + 1).padStart(4, '0')}`,
+  const payload = {
     date:        form.date,
     description: form.description,
     reference:   form.reference,
     status,
-    createdBy:   'Patrick M.',
-    totalDebit:  formTotalDebit.value,
-    totalCredit: formTotalCredit.value,
     lines:       form.lines.map(l => ({
       accountCode: l.accountCode,
       accountName: l.accountName,
@@ -164,13 +193,55 @@ const saveEntry = (status = 'draft') => {
       credit:      parseFloat(l.credit) || 0
     }))
   }
-  entries.value.unshift(newEntry)
+
+  try {
+    if (editingEntryId.value) {
+      await accountingService.updateJournalEntry(editingEntryId.value, payload)
+      const idx = entries.value.findIndex(e => e.id === editingEntryId.value)
+      if (idx !== -1) {
+        entries.value[idx] = { ...entries.value[idx], ...payload, totalDebit: formTotalDebit.value, totalCredit: formTotalCredit.value }
+      }
+    } else {
+      const { data } = await accountingService.createJournalEntry(payload)
+      const created = data.record || data
+      entries.value.unshift({
+        id: created.id,
+        entryNo: `JE-${String(created.id).padStart(4, '0')}`,
+        ...created,
+        totalDebit: formTotalDebit.value,
+        totalCredit: formTotalCredit.value
+      })
+    }
+  } catch (e) {
+    console.error('Failed to save journal entry:', e)
+    alert('Failed to save. Check your connection.')
+  }
+
+  editingEntryId.value = null
   showNewModal.value = false
 }
 
-const postEntry = (entry) => {
+const deleteEntry = async (entry) => {
+  if (confirm(`Delete journal entry ${entry.entryNo}? This cannot be undone.`)) {
+    try {
+      await accountingService.deleteJournalEntry(entry.id)
+      entries.value = entries.value.filter(e => e.id !== entry.id)
+    } catch (e) {
+      console.error('Failed to delete journal entry:', e)
+      alert('Failed to delete. Check your connection.')
+    }
+  }
+}
+
+const postEntry = async (entry) => {
   if (entry.status === 'pending' || entry.status === 'draft') {
-    entry.status = 'posted'
+    try {
+      await accountingService.updateJournalEntry(entry.id, { status: 'posted' })
+      entry.status = 'posted'
+    } catch (e) {
+      console.error('Failed to post journal entry:', e)
+      alert('Failed to post. Check your connection.')
+    }
   }
 }
 
@@ -404,6 +475,22 @@ const toggleExpand = (id) => {
                       <i class="ri-check-double-line"></i>
                     </button>
                     <button
+                      v-if="entry.status === 'pending' || entry.status === 'draft'"
+                      class="act-btn btn-edit"
+                      title="Edit Entry"
+                      @click="editEntry(entry)"
+                    >
+                      <i class="ri-pencil-line"></i>
+                    </button>
+                    <button
+                      v-if="entry.status === 'pending' || entry.status === 'draft'"
+                      class="act-btn btn-delete"
+                      title="Delete Entry"
+                      @click="deleteEntry(entry)"
+                    >
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
+                    <button
                       v-if="entry.status !== 'voided'"
                       class="act-btn btn-void"
                       title="Void Entry"
@@ -501,7 +588,7 @@ const toggleExpand = (id) => {
                 <i class="ri-article-line"></i>
               </div>
               <div>
-                <h3 class="modal-title">New Journal Entry</h3>
+                <h3 class="modal-title">{{ editingEntryId ? 'Edit Journal Entry' : 'New Journal Entry' }}</h3>
                 <p class="modal-sub">
                   Debits must equal Credits before posting
                 </p>
@@ -957,9 +1044,11 @@ const toggleExpand = (id) => {
   transition: all var(--transition-fast);
 }
 
-.btn-view { background: rgba(99,102,241,0.1);  color: var(--primary);         }
-.btn-post { background: rgba(16,185,129,0.1);  color: var(--finance-income);  }
-.btn-void { background: rgba(244,63,94,0.1);   color: var(--finance-expense); }
+.btn-view  { background: rgba(99,102,241,0.1);  color: var(--primary);         }
+.btn-post  { background: rgba(16,185,129,0.1);  color: var(--finance-income);  }
+.btn-edit  { background: rgba(251,191,36,0.15); color: rgb(217, 160, 18);      }
+.btn-delete{ background: rgba(244,63,94,0.1);   color: var(--finance-expense); }
+.btn-void   { background: rgba(148,163,184,0.15); color: var(--text-muted);    }
 .act-btn:hover { filter: brightness(1.15); transform: scale(1.08); }
 
 /* ─── Expanded Lines ──────────────────────────────────────── */

@@ -541,6 +541,573 @@ final class FinanceDataController extends Controller
         });
     }
 
+    // ─── Accounting CRUD ─────────────────────────────────────
+
+    public function journalEntry(Request $request, JournalEntry $journalEntry): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($journalEntry): JsonResponse {
+            $journalEntry->load('lines.account', 'lines');
+            return response()->json(['record' => [
+                'id' => $journalEntry->id,
+                'entryNo' => 'JE-'.str_pad((string) $journalEntry->id, 4, '0', STR_PAD_LEFT),
+                'date' => $this->date($journalEntry->posted_at),
+                'description' => $journalEntry->description,
+                'reference' => $journalEntry->reference,
+                'status' => $journalEntry->status,
+                'lines' => $journalEntry->lines->map(fn (JournalLine $line): array => [
+                    'accountCode' => $line->account?->code,
+                    'accountName' => $line->account?->name,
+                    'debit' => (float) $line->debit,
+                    'credit' => (float) $line->credit,
+                ]),
+            ]]);
+        });
+    }
+
+    public function createJournalEntry(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'date' => 'required|date',
+                'description' => 'required|string|max:500',
+                'reference' => 'nullable|string|max:100',
+                'status' => 'nullable|string|in:draft,pending,posted',
+                'lines' => 'required|array|min:1',
+                'lines.*.accountCode' => 'required|string',
+                'lines.*.debit' => 'nullable|numeric|min:0',
+                'lines.*.credit' => 'nullable|numeric|min:0',
+            ]);
+
+            $entry = JournalEntry::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'description' => $validated['description'],
+                'reference' => $validated['reference'] ?? null,
+                'status' => $validated['status'] ?? 'draft',
+                'posted_at' => $validated['date'],
+                'created_by' => $request->user()?->id,
+            ]);
+
+            foreach ($validated['lines'] as $line) {
+                $account = FinancialAccount::query()
+                    ->where('code', $line['accountCode'])
+                    ->where('tenant_id', TenantContext::requireId())
+                    ->first();
+                JournalLine::query()->create([
+                    'tenant_id' => TenantContext::requireId(),
+                    'journal_entry_id' => $entry->id,
+                    'financial_account_id' => $account?->id,
+                    'debit' => (float) ($line['debit'] ?? 0),
+                    'credit' => (float) ($line['credit'] ?? 0),
+                ]);
+            }
+
+            return response()->json(['record' => $entry->fresh()], 201);
+        });
+    }
+
+    public function updateJournalEntry(Request $request, JournalEntry $journalEntry): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $journalEntry): JsonResponse {
+            $validated = $request->validate([
+                'date' => 'nullable|date',
+                'description' => 'nullable|string|max:500',
+                'reference' => 'nullable|string|max:100',
+                'status' => 'nullable|string|in:draft,pending,posted,voided',
+            ]);
+
+            $journalEntry->update(array_filter([
+                'description' => $validated['description'] ?? null,
+                'reference' => $validated['reference'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'posted_at' => $validated['date'] ?? null,
+            ], fn ($v) => $v !== null));
+
+            return response()->json(['record' => $journalEntry->fresh()]);
+        });
+    }
+
+    public function deleteJournalEntry(Request $request, JournalEntry $journalEntry): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($journalEntry): JsonResponse {
+            $journalEntry->lines()->delete();
+            $journalEntry->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function createAccount(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'code' => 'required|string|max:20|unique:financial_accounts,code',
+                'name' => 'required|string|max:200',
+                'type' => 'required|string|in:asset,liability,equity,revenue,expense',
+                'is_active' => 'nullable|boolean',
+            ]);
+            $account = FinancialAccount::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'normal_balance' => in_array($validated['type'], ['liability', 'equity', 'revenue']) ? 'credit' : 'debit',
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+            return response()->json(['record' => $account], 201);
+        });
+    }
+
+    public function updateAccount(Request $request, FinancialAccount $financialAccount): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $financialAccount): JsonResponse {
+            $validated = $request->validate([
+                'code' => 'nullable|string|max:20|unique:financial_accounts,code,'.$financialAccount->id,
+                'name' => 'nullable|string|max:200',
+                'type' => 'nullable|string|in:asset,liability,equity,revenue,expense',
+                'is_active' => 'nullable|boolean',
+            ]);
+            $financialAccount->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $financialAccount->fresh()]);
+        });
+    }
+
+    public function deleteAccount(Request $request, FinancialAccount $financialAccount): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($financialAccount): JsonResponse {
+            if ($financialAccount->journalLines()->exists()) {
+                return response()->json(['message' => 'Account has journal lines'], 409);
+            }
+            $financialAccount->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    // ─── Payables CRUD ───────────────────────────────────────
+
+    public function vendor(Request $request, Supplier $supplier): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($supplier): JsonResponse {
+            return response()->json(['record' => [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'email' => $supplier->email,
+                'phone' => $supplier->phone,
+                'address' => $supplier->address,
+                'category' => $supplier->category,
+                'tax_id' => $supplier->tax_id,
+                'payment_terms' => $supplier->payment_terms ?? 'Net 30',
+                'open_balance' => (float) SupplierInvoice::query()->where('supplier_id', $supplier->id)->whereIn('status', ['pending', 'pending_approval', 'open', 'approved'])->sum('amount'),
+                'total_paid' => (float) Payment::query()->whereHas('invoice', fn ($q) => $q->where('supplier_id', $supplier->id))->sum('amount'),
+                'status' => $supplier->status,
+            ]]);
+        });
+    }
+
+    public function createVendor(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'required|string|max:200',
+                'email' => 'nullable|email|max:200',
+                'phone' => 'nullable|string|max:50',
+                'address' => 'nullable|string|max:500',
+                'category' => 'nullable|string|max:100',
+            ]);
+            $vendor = Supplier::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'category' => $validated['category'] ?? null,
+                'status' => 'active',
+            ]);
+            return response()->json(['record' => $vendor], 201);
+        });
+    }
+
+    public function updateVendor(Request $request, Supplier $supplier): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $supplier): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:200',
+                'email' => 'nullable|email|max:200',
+                'phone' => 'nullable|string|max:50',
+                'address' => 'nullable|string|max:500',
+                'category' => 'nullable|string|max:100',
+                'status' => 'nullable|string|in:active,inactive',
+            ]);
+            $supplier->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $supplier->fresh()]);
+        });
+    }
+
+    public function deleteVendor(Request $request, Supplier $supplier): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($supplier): JsonResponse {
+            if ($supplier->invoices()->exists()) {
+                return response()->json(['message' => 'Vendor has linked invoices'], 409);
+            }
+            $supplier->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function bill(Request $request, SupplierInvoice $supplierInvoice): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($supplierInvoice): JsonResponse {
+            $supplierInvoice->load('supplier:id,name');
+            return response()->json(['record' => $supplierInvoice]);
+        });
+    }
+
+    public function createBill(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'vendor' => 'required|string|max:200',
+                'number' => 'required|string|max:50',
+                'date' => 'required|date',
+                'due' => 'required|date',
+                'amount' => 'required|numeric|min:0',
+                'status' => 'nullable|string',
+            ]);
+            $supplier = Supplier::query()->firstOrCreate(
+                ['name' => $validated['vendor'], 'tenant_id' => TenantContext::requireId()],
+                ['tenant_id' => TenantContext::requireId(), 'status' => 'active'],
+            );
+            $bill = SupplierInvoice::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'supplier_id' => $supplier->id,
+                'invoice_number' => $validated['number'],
+                'invoice_date' => $validated['date'],
+                'due_date' => $validated['due'],
+                'amount' => $validated['amount'],
+                'status' => $validated['status'] ?? 'pending',
+            ]);
+            return response()->json(['record' => $bill], 201);
+        });
+    }
+
+    public function updateBill(Request $request, SupplierInvoice $supplierInvoice): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $supplierInvoice): JsonResponse {
+            $validated = $request->validate([
+                'amount' => 'nullable|numeric|min:0',
+                'status' => 'nullable|string',
+                'due' => 'nullable|date',
+            ]);
+            $supplierInvoice->update(array_filter([
+                'amount' => $validated['amount'] ?? null,
+                'due_date' => $validated['due'] ?? null,
+                'status' => $validated['status'] ?? null,
+            ], fn ($v) => $v !== null));
+            return response()->json(['record' => $supplierInvoice->fresh()]);
+        });
+    }
+
+    public function deleteBill(Request $request, SupplierInvoice $supplierInvoice): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($supplierInvoice): JsonResponse {
+            $supplierInvoice->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function payment(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($payment): JsonResponse {
+            $payment->load('invoice');
+            return response()->json(['record' => $payment]);
+        });
+    }
+
+    public function createPayment(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'vendor' => 'nullable|string|max:200',
+                'amount' => 'required|numeric|min:0',
+                'method' => 'nullable|string|max:50',
+                'bank' => 'nullable|string|max:200',
+                'date' => 'nullable|date',
+                'reference' => 'nullable|string|max:100',
+                'status' => 'nullable|string',
+            ]);
+            $payment = Payment::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'amount' => $validated['amount'],
+                'method' => $validated['method'] ?? 'Bank Transfer',
+                'reference' => $validated['reference'] ?? null,
+                'paid_at' => $validated['date'] ?? now(),
+                'status' => $validated['status'] ?? 'Paid',
+            ]);
+            return response()->json(['record' => $payment], 201);
+        });
+    }
+
+    public function updatePayment(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $payment): JsonResponse {
+            $validated = $request->validate([
+                'amount' => 'nullable|numeric|min:0',
+                'method' => 'nullable|string|max:50',
+                'status' => 'nullable|string',
+            ]);
+            $payment->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $payment->fresh()]);
+        });
+    }
+
+    public function deletePayment(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($payment): JsonResponse {
+            $payment->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    // ─── Receivables CRUD ────────────────────────────────────
+
+    public function customer(Request $request, Customer $customer): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($customer): JsonResponse {
+            return response()->json(['record' => $customer]);
+        });
+    }
+
+    public function createCustomer(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'required|string|max:200',
+                'email' => 'nullable|email|max:200',
+                'contact' => 'nullable|string|max:100',
+                'credit_limit' => 'nullable|numeric|min:0',
+                'terms' => 'nullable|string|max:50',
+                'status' => 'nullable|string',
+            ]);
+            $customer = Customer::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'contact_person' => $validated['contact'] ?? null,
+                'credit_limit' => $validated['credit_limit'] ?? 0,
+                'payment_terms' => $validated['terms'] ?? 'Net 30',
+                'status' => $validated['status'] ?? 'active',
+            ]);
+            return response()->json(['record' => $customer], 201);
+        });
+    }
+
+    public function updateCustomer(Request $request, Customer $customer): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $customer): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:200',
+                'email' => 'nullable|email|max:200',
+                'contact' => 'nullable|string|max:100',
+                'credit_limit' => 'nullable|numeric|min:0',
+                'status' => 'nullable|string',
+            ]);
+            $customer->update(array_filter([
+                'name' => $validated['name'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'contact_person' => $validated['contact'] ?? null,
+                'credit_limit' => $validated['credit_limit'] ?? null,
+                'status' => $validated['status'] ?? null,
+            ], fn ($v) => $v !== null));
+            return response()->json(['record' => $customer->fresh()]);
+        });
+    }
+
+    public function deleteCustomer(Request $request, Customer $customer): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($customer): JsonResponse {
+            if ($customer->invoices()->exists()) {
+                return response()->json(['message' => 'Customer has linked invoices'], 409);
+            }
+            $customer->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function createReceivableInvoice(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'customer_id' => 'required|exists:customers,id',
+                'invoice_number' => 'required|string|max:50',
+                'invoice_date' => 'required|date',
+                'due_date' => 'required|date',
+                'amount' => 'required|numeric|min:0',
+                'status' => 'nullable|string',
+            ]);
+            $invoice = CustomerInvoice::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'customer_id' => $validated['customer_id'],
+                'invoice_number' => $validated['invoice_number'],
+                'invoice_date' => $validated['invoice_date'],
+                'due_date' => $validated['due_date'],
+                'amount' => $validated['amount'],
+                'status' => $validated['status'] ?? 'open',
+            ]);
+            return response()->json(['record' => $invoice], 201);
+        });
+    }
+
+    public function updateReceivableInvoice(Request $request, CustomerInvoice $customerInvoice): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $customerInvoice): JsonResponse {
+            $validated = $request->validate([
+                'amount' => 'nullable|numeric|min:0',
+                'status' => 'nullable|string',
+            ]);
+            $customerInvoice->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $customerInvoice->fresh()]);
+        });
+    }
+
+    public function deleteReceivableInvoice(Request $request, CustomerInvoice $customerInvoice): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($customerInvoice): JsonResponse {
+            $customerInvoice->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function receipt(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($payment): JsonResponse {
+            $payment->load('invoice.customer');
+            return response()->json(['record' => $payment]);
+        });
+    }
+
+    public function createReceipt(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'customer' => 'nullable|string|max:200',
+                'amount' => 'required|numeric|min:0',
+                'method' => 'nullable|string|max:50',
+                'date' => 'nullable|date',
+                'reference' => 'nullable|string|max:100',
+                'status' => 'nullable|string',
+            ]);
+            $receipt = Payment::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'amount' => $validated['amount'],
+                'method' => $validated['method'] ?? 'Mobile Money',
+                'reference' => $validated['reference'] ?? null,
+                'paid_at' => $validated['date'] ?? now(),
+                'status' => $validated['status'] ?? 'Matched',
+            ]);
+            return response()->json(['record' => $receipt], 201);
+        });
+    }
+
+    public function updateReceipt(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $payment): JsonResponse {
+            $validated = $request->validate([
+                'amount' => 'nullable|numeric|min:0',
+                'method' => 'nullable|string|max:50',
+                'status' => 'nullable|string',
+            ]);
+            $payment->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $payment->fresh()]);
+        });
+    }
+
+    public function deleteReceipt(Request $request, Payment $payment): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($payment): JsonResponse {
+            $payment->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    // ─── Treasury CRUD ──────────────────────────────────────
+
+    public function createBankAccount(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'required|string|max:200',
+                'bank' => 'required|string|max:200',
+                'type' => 'nullable|string|max:50',
+                'balance' => 'nullable|numeric',
+                'status' => 'nullable|string',
+            ]);
+            $account = BankAccount::query()->create([
+                'tenant_id' => TenantContext::requireId(),
+                'account_name' => $validated['name'],
+                'bank_name' => $validated['bank'],
+                'currency' => $validated['type'] ?? 'GHS',
+                'current_balance' => $validated['balance'] ?? 0,
+                'available_balance' => $validated['balance'] ?? 0,
+                'status' => $validated['status'] ?? 'active',
+            ]);
+            return response()->json(['record' => $account], 201);
+        });
+    }
+
+    public function updateBankAccount(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $bankAccount): JsonResponse {
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:200',
+                'bank' => 'nullable|string|max:200',
+                'balance' => 'nullable|numeric',
+                'status' => 'nullable|string',
+            ]);
+            $bankAccount->update(array_filter([
+                'account_name' => $validated['name'] ?? null,
+                'bank_name' => $validated['bank'] ?? null,
+                'current_balance' => $validated['balance'] ?? null,
+                'available_balance' => $validated['balance'] ?? null,
+                'status' => $validated['status'] ?? null,
+            ], fn ($v) => $v !== null));
+            return response()->json(['record' => $bankAccount->fresh()]);
+        });
+    }
+
+    public function deleteBankAccount(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($bankAccount): JsonResponse {
+            $bankAccount->delete();
+            return response()->json(['message' => 'Deleted']);
+        });
+    }
+
+    public function createReconciliation(Request $request): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request): JsonResponse {
+            $validated = $request->validate([
+                'transaction_id' => 'required|exists:bank_transactions,id',
+                'journal_entry_id' => 'nullable|exists:journal_entries,id',
+            ]);
+            $transaction = BankTransaction::query()->findOrFail($validated['transaction_id']);
+            $transaction->update([
+                'reconciliation_status' => 'reconciled',
+                'journal_entry_id' => $validated['journal_entry_id'] ?? null,
+            ]);
+            return response()->json(['record' => $transaction->fresh()], 201);
+        });
+    }
+
+    public function updateReconciliation(Request $request, BankTransaction $bankTransaction): JsonResponse
+    {
+        return $this->forTenant($request, function () use ($request, $bankTransaction): JsonResponse {
+            $validated = $request->validate([
+                'reconciliation_status' => 'nullable|string|in:reconciled,unreconciled',
+                'journal_entry_id' => 'nullable|exists:journal_entries,id',
+            ]);
+            $bankTransaction->update(array_filter($validated, fn ($v) => $v !== null));
+            return response()->json(['record' => $bankTransaction->fresh()]);
+        });
+    }
+
     /**
      * @template TReturn
      * @param callable(): TReturn $callback

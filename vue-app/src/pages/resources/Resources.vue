@@ -13,6 +13,12 @@ onMounted(async () => {
     console.error('Failed to load team members:', e)
   }
 })
+
+const deleteMember = (member) => {
+  if (!confirm(`Remove team member "${member.name}"? This cannot be undone.`)) return
+  try { resourcesService.deleteMember(member.id) } catch (e) { console.warn('Backend not available') }
+  teamMembers.value = teamMembers.value.filter(m => m !== member)
+}
 </script>
 
 <template>
@@ -118,7 +124,8 @@ onMounted(async () => {
                   <td>
                     <div class="flex gap-1">
                       <button class="ti-btn ti-btn-soft-primary ti-btn-icon ti-btn-sm"><i class="ri-eye-line"></i></button>
-                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-info ti-btn-icon ti-btn-sm" @click="alert(`Edit team member: ${member.name}`)"><i class="ri-edit-line"></i></button>
+                      <button class="ti-btn ti-btn-soft-danger ti-btn-icon ti-btn-sm" @click="deleteMember(member)"><i class="ri-delete-bin-line"></i></button>
                     </div>
                   </td>
                 </tr>
